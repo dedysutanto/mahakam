@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import { Settings, Upload, Building2, Hash, FileText, MapPin } from 'lucide-react'
 import { PROVINCES_ID, DEFAULT_COUNTRY } from '../lib/regions'
 import { useAuth } from '../lib/AuthContext'
-import { UserPlus, Power, Pencil, Trash2 } from 'lucide-react'
+import { UserPlus, Power, Pencil, Trash2, Key } from 'lucide-react'
 
 const KINDS = [
   { key: 'invoice', label: 'Faktur', defaultPrefix: 'INV' },
@@ -76,6 +76,81 @@ export default function SettingsPage() {
   const [editMember, setEditMember] = useState({ role: 'member', scopes: [] as string[] })
   const [resetPw, setResetPw] = useState(false)
   const [newPassword, setNewPassword] = useState('')
+
+  // API Keys state
+  interface ApiKey { id: string; name: string; keyPrefix: string; scopes: string[]; isActive: boolean; expiresAt: string | null; lastUsedAt: string | null; createdAt: string }
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [showAddApiKey, setShowAddApiKey] = useState(false)
+  const [apiKeyMsg, setApiKeyMsg] = useState('')
+  const [newApiKey, setNewApiKey] = useState({ name: '', scopes: ['faktur'] as string[], expiresIn: 'never' })
+  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null)
+
+  const fetchApiKeys = () => {
+    if (!tenantId || !isAdminUser) return
+    fetch(`/api/tenants/${tenantId}/api-keys`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Gagal memuat API key'))))
+      .then(setApiKeys)
+      .catch((e) => setApiKeyMsg(e.message))
+  }
+
+  useEffect(() => { fetchApiKeys() }, [tenantId])
+
+  const toggleApiKeyScope = (scope: string) => {
+    setNewApiKey((k) => ({
+      ...k,
+      scopes: k.scopes.includes(scope) ? k.scopes.filter((x) => x !== scope) : [...k.scopes, scope],
+    }))
+  }
+
+  const handleCreateApiKey = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setApiKeyMsg('')
+    try {
+      const res = await fetch(`/api/tenants/${tenantId}/api-keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newApiKey),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Gagal membuat API key')
+      setCreatedApiKey(data.apiKey.key)
+      setApiKeyMsg('API key berhasil dibuat — salin sekarang!')
+      setNewApiKey({ name: '', scopes: ['faktur'], expiresIn: 'never' })
+      setShowAddApiKey(false)
+      fetchApiKeys()
+    } catch (err: any) {
+      setApiKeyMsg(err.message)
+    }
+  }
+
+  const handleToggleApiKey = async (keyId: string, currentActive: boolean) => {
+    try {
+      const res = await fetch(`/api/tenants/${tenantId}/api-keys/${keyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !currentActive }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Gagal mengubah status')
+      setApiKeyMsg(data.message)
+      fetchApiKeys()
+    } catch (err: any) {
+      setApiKeyMsg(err.message)
+    }
+  }
+
+  const handleDeleteApiKey = async (keyId: string, name: string) => {
+    if (!confirm(`Hapus API key "${name}"? Aksi ini tidak dapat dibatalkan.`)) return
+    try {
+      const res = await fetch(`/api/tenants/${tenantId}/api-keys/${keyId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Gagal menghapus API key')
+      setApiKeyMsg(data.message)
+      fetchApiKeys()
+    } catch (err: any) {
+      setApiKeyMsg(err.message)
+    }
+  }
 
   const fetchMembers = () => {
     if (!tenantId || !isAdminUser) return
@@ -737,6 +812,149 @@ export default function SettingsPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* API Keys (company admin only) */}
+        {isAdminUser && (
+          <div className="card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-muted-foreground" />
+                <h2 className="font-semibold text-foreground">API Keys</h2>
+              </div>
+              <button onClick={() => setShowAddApiKey(!showAddApiKey)} className="btn btn-primary btn-sm">
+                + Buat API Key
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              API key untuk akses programatik ke data perusahaan. Gunakan header <code className="bg-muted px-1.5 py-0.5 rounded text-xs">Authorization: Bearer mk_live_...</code>
+            </p>
+
+            {apiKeyMsg && <p className="text-sm text-primary">{apiKeyMsg}</p>}
+
+            {createdApiKey && (
+              <div className="p-4 bg-success/10 border border-success/30 rounded-lg">
+                <p className="text-sm font-medium text-success mb-2">API Key (salin sekarang — hanya ditampilkan sekali):</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 p-2 bg-card border border-border rounded text-sm font-mono break-all">{createdApiKey}</code>
+                  <button onClick={() => { navigator.clipboard.writeText(createdApiKey) }} className="btn btn-secondary btn-sm whitespace-nowrap">Salin</button>
+                </div>
+                <button onClick={() => setCreatedApiKey(null)} className="mt-2 text-xs text-muted-foreground hover:text-foreground">Tutup</button>
+              </div>
+            )}
+
+            {showAddApiKey && (
+              <form onSubmit={handleCreateApiKey} className="border border-border rounded-lg p-4 space-y-3 bg-muted/40">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Nama *</label>
+                    <input
+                      type="text" required className="input" value={newApiKey.name}
+                      onChange={(e) => setNewApiKey({ ...newApiKey, name: e.target.value })}
+                      placeholder="Contoh: MCP Integration"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Kedaluwarsa</label>
+                    <select
+                      className="input" value={newApiKey.expiresIn}
+                      onChange={(e) => setNewApiKey({ ...newApiKey, expiresIn: e.target.value })}
+                    >
+                      <option value="never">Tanpa batas</option>
+                      <option value="30d">30 hari</option>
+                      <option value="90d">90 hari</option>
+                      <option value="180d">180 hari</option>
+                      <option value="1y">1 tahun</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Akses Menu</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SCOPE_OPTIONS.filter((sc) => sc.key !== 'pengaturan').map((sc) => (
+                      <button
+                        key={sc.key} type="button"
+                        onClick={() => toggleApiKeyScope(sc.key)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          newApiKey.scopes.includes(sc.key)
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-card text-muted-foreground border-border hover:bg-muted'
+                        }`}
+                      >
+                        {sc.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowAddApiKey(false)}>Batal</button>
+                  <button type="submit" className="btn btn-primary">Buat API Key</button>
+                </div>
+              </form>
+            )}
+
+            {apiKeys.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="py-2 font-medium">Nama</th>
+                      <th className="py-2 font-medium">Prefix</th>
+                      <th className="py-2 font-medium">Akses</th>
+                      <th className="py-2 font-medium">Status</th>
+                      <th className="py-2 font-medium">Terakhir Dipakai</th>
+                      <th className="py-2 font-medium">Kedaluwarsa</th>
+                      <th className="py-2 font-medium text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {apiKeys.map((k) => (
+                      <tr key={k.id} className="border-b border-border/50">
+                        <td className="py-2 font-medium">{k.name}</td>
+                        <td className="py-2 font-mono text-xs text-muted-foreground">{k.keyPrefix}...</td>
+                        <td className="py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {k.scopes.map((s) => (
+                              <span key={s} className="px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">{SCOPE_OPTIONS.find((o) => o.key === s)?.label || s}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${k.isActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                            {k.isActive ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                        </td>
+                        <td className="py-2 text-xs text-muted-foreground">
+                          {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString('id-ID') : 'Belum pernah'}
+                        </td>
+                        <td className="py-2 text-xs text-muted-foreground">
+                          {k.expiresAt ? new Date(k.expiresAt).toLocaleDateString('id-ID') : 'Selamanya'}
+                        </td>
+                        <td className="py-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleToggleApiKey(k.id, k.isActive)}
+                              className={`min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg transition-colors ${k.isActive ? 'text-warning hover:bg-warning/10' : 'text-success hover:bg-success/10'}`}
+                              title={k.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteApiKey(k.id, k.name)}
+                              className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

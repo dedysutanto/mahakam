@@ -32,6 +32,7 @@ model Tenant {
   purchases      Purchase[]
   quotations     Quotation[]
   taxes          Tax[]
+  apiKeys        ApiKey[]
 
   @@map("tenants")
 }
@@ -418,4 +419,26 @@ model Tax {
 
   @@unique([tenantId, name])
   @@map("taxes")
+}
+
+// ============================================
+// API KEYS (PER TENANT, ADMIN-ONLY)
+// ============================================
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  tenantId    String
+  name        String    @db.VarChar(100)
+  keyPrefix   String    @unique @db.VarChar(30)
+  keyHash     String    @db.VarChar(255)
+  scopes      String[]  @default([])
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([keyPrefix])
+  @@map("api_keys")
 }

@@ -5,6 +5,7 @@ import { prisma } from '../../utils/db'
 import { createWriteStream } from 'fs'
 import { join } from 'path'
 import { pipeline } from 'stream/promises'
+import { randomBytes } from 'crypto'
 
 export async function tenantRoutes(app: FastifyInstance) {
   app.decorate('validateTenant', async (request: any, reply: any) => {
@@ -284,5 +285,122 @@ export async function tenantRoutes(app: FastifyInstance) {
     })
 
     reply.send({ message: 'Tenant berhasil diperbarui' })
+  })
+
+  // ==========================================
+  // API KEYS (admin-only)
+  // ==========================================
+
+  // LIST API KEYS
+  app.get('/:id/api-keys', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any) => {
+    const { id } = request.params as any
+    const { role } = request.user as any
+    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+
+    const keys = await prisma.apiKey.findMany({
+      where: { tenantId: id },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return keys.map((k: any) => ({
+      id: k.id,
+      name: k.name,
+      keyPrefix: k.keyPrefix,
+      scopes: k.scopes || [],
+      isActive: k.isActive,
+      expiresAt: k.expiresAt?.toISOString() || null,
+      lastUsedAt: k.lastUsedAt?.toISOString() || null,
+      createdAt: k.createdAt.toISOString(),
+    }))
+  })
+
+  // CREATE API KEY
+  app.post('/:id/api-keys', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id } = request.params as any
+    const { role } = request.user as any
+    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+
+    const { name, scopes = [], expiresIn } = request.body as any
+    if (!name || !String(name).trim()) throw new Error('Nama API key wajib diisi')
+
+    const rawKey = 'mk_live_' + randomBytes(20).toString('hex')
+    const keyPrefix = rawKey.slice(0, 14)
+    const keyHash = bcrypt.hashSync(rawKey, 10)
+
+    let expiresAt: Date | null = null
+    if (expiresIn && expiresIn !== 'never') {
+      const now = new Date()
+      const map: Record<string, number> = {
+        '30d': 30 * 24 * 60 * 60 * 1000,
+        '90d': 90 * 24 * 60 * 60 * 1000,
+        '180d': 180 * 24 * 60 * 60 * 1000,
+        '1y': 365 * 24 * 60 * 60 * 1000,
+      }
+      if (map[expiresIn]) expiresAt = new Date(now.getTime() + map[expiresIn])
+    }
+
+    const apiKey = await prisma.apiKey.create({
+      data: {
+        tenantId: id,
+        name: String(name).trim(),
+        keyPrefix,
+        keyHash,
+        scopes: Array.isArray(scopes) ? scopes : [],
+        expiresAt,
+      },
+    })
+
+    reply.code(201).send({
+      message: 'API key berhasil dibuat — simpan key ini sekarang, hanya ditampilkan sekali.',
+      apiKey: {
+        id: apiKey.id,
+        name: apiKey.name,
+        key: rawKey,
+        keyPrefix: apiKey.keyPrefix,
+        scopes: apiKey.scopes,
+        expiresAt: apiKey.expiresAt?.toISOString() || null,
+        createdAt: apiKey.createdAt.toISOString(),
+      },
+    })
+  })
+
+  // REVOKE (DELETE) API KEY
+  app.delete('/:id/api-keys/:keyId', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id, keyId } = request.params as any
+    const { role } = request.user as any
+    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+
+    const key = await prisma.apiKey.findFirst({ where: { id: keyId, tenantId: id } })
+    if (!key) throw new Error('API key tidak ditemukan')
+
+    await prisma.apiKey.delete({ where: { id: keyId } })
+
+    reply.send({ message: 'API key berhasil dihapus' })
+  })
+
+  // TOGGLE API KEY ACTIVE STATUS
+  app.put('/:id/api-keys/:keyId', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id, keyId } = request.params as any
+    const { role } = request.user as any
+    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+
+    const { isActive } = request.body as any
+    const key = await prisma.apiKey.findFirst({ where: { id: keyId, tenantId: id } })
+    if (!key) throw new Error('API key tidak ditemukan')
+
+    const updated = await prisma.apiKey.update({
+      where: { id: keyId },
+      data: { isActive: Boolean(isActive) },
+    })
+
+    reply.send({ message: `API key ${updated.isActive ? 'diaktifkan' : 'dinonaktifkan'}`, isActive: updated.isActive })
   })
 }
