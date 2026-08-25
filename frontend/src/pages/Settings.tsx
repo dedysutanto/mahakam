@@ -22,6 +22,7 @@ const SCOPE_OPTIONS = [
   { key: 'pelanggan', label: 'Pelanggan & Vendor' },
   { key: 'pajak', label: 'Pajak' },
   { key: 'laporan', label: 'Laporan' },
+  { key: 'pengaturan', label: 'Pengaturan' },
 ]
 
 export default function SettingsPage() {
