@@ -92,11 +92,6 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-4 p-3 bg-accent rounded-lg text-xs text-accent-foreground">
-            <p className="font-medium mb-1">Demo:</p>
-            <p>Email: admin@majusejahtera.id</p>
-            <p>Password: admin123</p>
-          </div>
         </div>
       </div>
     </div>
