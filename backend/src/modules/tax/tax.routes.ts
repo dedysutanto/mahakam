@@ -46,17 +46,24 @@ export async function taxRoutes(app: FastifyInstance) {
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
     const { tenantId } = request.user as any
-    const data = request.body as any
+    const body = request.body as any
 
     const existing = await prisma.tax.findFirst({ where: { id, tenantId } })
     if (!existing) throw new Error('Pajak tidak ditemukan')
 
+    const allowed = (({ name, rate, isDefault }) => {
+      const data: any = {}
+      if (name !== undefined) data.name = name
+      if (rate !== undefined) data.rate = Number(rate)
+      if (isDefault !== undefined) data.isDefault = isDefault
+      return data
+    })(body)
+
     const result = await prisma.$transaction(async (tx: any) => {
-      if (data.isDefault === true) {
+      if (allowed.isDefault === true) {
         await tx.tax.updateMany({ where: { tenantId, isDefault: true, id: { not: id } }, data: { isDefault: false } })
       }
-      if (data.rate != null) data.rate = Number(data.rate)
-      return tx.tax.update({ where: { id }, data })
+      return tx.tax.update({ where: { id }, data: allowed })
     })
 
     reply.send(result)

@@ -6,7 +6,7 @@ export function addAuth(app: FastifyInstance) {
     try {
       await request.jwtVerify()
     } catch (err) {
-      reply.code(401).send({ error: 'Akses ditolak. Token tidak valid atau kadaluarsa.' })
+      return reply.code(401).send({ error: 'Akses ditolak. Token tidak valid atau kadaluarsa.' })
     }
   })
 }
@@ -16,7 +16,7 @@ export function authHook(app: FastifyInstance) {
     try {
       await request.jwtVerify()
     } catch (err) {
-      reply.code(401).send({ error: 'Akses ditolak. Token tidak valid atau kadaluarsa.' })
+      return reply.code(401).send({ error: 'Akses ditolak. Token tidak valid atau kadaluarsa.' })
     }
   }
 }

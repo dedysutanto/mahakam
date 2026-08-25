@@ -31,9 +31,16 @@ export async function createApp() {
   })
 
   // Register plugins
-  await app.register(cors, { origin: true })
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173'
+  await app.register(cors, {
+    origin: corsOrigin.split(',').map((s) => s.trim()),
+    credentials: true,
+  })
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required')
+  }
   await app.register(jwt, {
-    secret: process.env.JWT_SECRET || 'supersecretkey-change-in-production',
+    secret: process.env.JWT_SECRET,
     sign: { expiresIn: '24h' },
   })
   addAuth(app)

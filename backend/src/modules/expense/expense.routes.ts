@@ -130,26 +130,27 @@ export async function expenseRoutes(app: FastifyInstance) {
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
     const { tenantId } = request.user as any
-    const data = { ...(request.body as any) }
+    const body = request.body as any
 
     const existing = await prisma.expense.findFirst({ where: { id, tenantId } })
     if (!existing) throw new Error('Pengeluaran tidak ditemukan')
 
-    if ('vendorId' in data) {
-      if (data.vendorId === null || data.vendorId === '') {
-        data.vendorId = null
-      } else {
-        const vendor = await prisma.customer.findFirst({ where: { id: data.vendorId, tenantId } })
-        if (!vendor) throw new Error('Vendor tidak ditemukan')
-        if (vendor.type !== 'vendor') throw new Error('Kontak ini bukan vendor')
-        data.vendorName = vendor.name
-      }
+    const allowed = (({ ledgerId, vendorId, vendorName, description, amount, date, category, receiptUrl, notes }) =>
+      ({ ledgerId, vendorId, vendorName, description, amount, date, category, receiptUrl, notes }))(body)
+
+    if (allowed.vendorId === null || allowed.vendorId === '') {
+      allowed.vendorId = null
+    } else if (allowed.vendorId) {
+      const vendor = await prisma.customer.findFirst({ where: { id: allowed.vendorId, tenantId } })
+      if (!vendor) throw new Error('Vendor tidak ditemukan')
+      if (vendor.type !== 'vendor') throw new Error('Kontak ini bukan vendor')
+      allowed.vendorName = vendor.name
     }
-    delete data.id
+    if (allowed.date) allowed.date = new Date(allowed.date)
 
     const expense = await prisma.expense.update({
       where: { id },
-      data,
+      data: allowed,
       include: { ledger: true },
     })
 

@@ -87,14 +87,17 @@ export async function customerRoutes(app: FastifyInstance) {
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
     const { tenantId } = request.user as any
-    const data = request.body as any
+    const body = request.body as any
 
     const existing = await prisma.customer.findFirst({ where: { id, tenantId } })
     if (!existing) throw new Error('Pelanggan tidak ditemukan')
 
+    const allowed = (({ name, email, phone, address, province, country, taxId, type }) =>
+      ({ name, email, phone, address, province, country, taxId, type }))(body)
+
     const customer = await prisma.customer.update({
       where: { id },
-      data,
+      data: allowed,
     })
 
     reply.send(customer)

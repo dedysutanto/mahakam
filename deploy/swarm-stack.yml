@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-si_keuangan}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-si_keuangan_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-keuangan_db}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -25,8 +25,9 @@ services:
     build: ./backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-si_keuangan}:${POSTGRES_PASSWORD:-si_keuangan_pass}@db:5432/${POSTGRES_DB:-keuangan_db}
-      JWT_SECRET: ${JWT_SECRET:-supersecretkey-change-in-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-si_keuangan}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-keuangan_db}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://localhost:80}
       NODE_ENV: production
       PORT: 3000
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-super@mahakam.id}

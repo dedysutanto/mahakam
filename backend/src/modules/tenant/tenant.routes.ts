@@ -252,12 +252,12 @@ export async function tenantRoutes(app: FastifyInstance) {
     const data = await request.file()
     if (!data) throw new Error('File tidak ditemukan')
 
-    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml']
+    const allowed = ['image/png', 'image/jpeg']
     if (!allowed.includes(data.mimetype)) {
-      throw new Error('Format logo harus PNG, JPEG, atau SVG')
+      throw new Error('Format logo harus PNG atau JPEG')
     }
 
-    const ext = data.mimetype === 'image/png' ? 'png' : data.mimetype === 'image/jpeg' ? 'jpg' : 'svg'
+    const ext = data.mimetype === 'image/png' ? 'png' : 'jpg'
     const filename = `${id}.${ext}`
     const filePath = join(process.cwd(), 'uploads', 'logos', filename)
 

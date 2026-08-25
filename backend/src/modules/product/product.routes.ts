@@ -74,12 +74,15 @@ export async function productRoutes(app: FastifyInstance) {
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
     const { tenantId } = request.user as any
-    const data = request.body as any
+    const body = request.body as any
 
     const existing = await prisma.product.findFirst({ where: { id, tenantId } })
     if (!existing) throw new Error('Produk tidak ditemukan')
 
-    const product = await prisma.product.update({ where: { id }, data })
+    const allowed = (({ name, sku, unit, description, price }) =>
+      ({ name, sku, unit, description, price }))(body)
+
+    const product = await prisma.product.update({ where: { id }, data: allowed })
     reply.send(product)
   })
 
