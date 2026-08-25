@@ -126,9 +126,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             />
           )}
           {(!tenantData?.id || logoState === 'failed') && (
-            <div className="w-9 h-9 bg-primary rounded-lg items-center justify-center flex-shrink-0 flex">
-              <span className="text-primary-foreground font-bold text-sm">SK</span>
-            </div>
+            <img src="/favicon.svg" alt="Mahakam" className="w-9 h-9 flex-shrink-0" />
           )}
           {(!collapsed || mobileOpen) && (
             <div className="min-w-0 flex-1">

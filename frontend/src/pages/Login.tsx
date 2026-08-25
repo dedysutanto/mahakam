@@ -22,9 +22,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/25">
-            <span className="text-primary-foreground font-bold text-2xl">SK</span>
-          </div>
+          <img src="/favicon.svg" alt="Mahakam" className="w-16 h-16 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground">Mahakam</h1>
           <p className="text-muted-foreground mt-1">Sistem Keuangan</p>
         </div>
