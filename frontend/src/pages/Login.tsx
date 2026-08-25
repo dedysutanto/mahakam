@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useAuth } from '../lib/AuthContext'
+import { APP_VERSION, GITHUB_URL } from '../config'
 
 const backgrounds = [
   '/login-bg/1005.jpg',
@@ -106,6 +107,14 @@ export default function Login() {
             </button>
           </form>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-white/50 mt-6">
+          v{APP_VERSION} ·{' '}
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-white/80">
+            GitHub
+          </a>
+        </p>
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import { useAuth } from '../lib/AuthContext'
 import { useTheme } from '../lib/ThemeContext'
 import { useNavigate } from 'react-router-dom'
 import { Moon, Sun, LogOut } from 'lucide-react'
+import { APP_VERSION, GITHUB_URL } from '../config'
 
 // scope = '' means always visible (no backend module behind it)
 const navItems = [
@@ -263,6 +264,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </main>
+
+        {/* Footer */}
+        <footer className="border-t border-border bg-card/50 px-4 py-2 text-center text-xs text-muted-foreground">
+          Mahakam v{APP_VERSION} ·{' '}
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+            GitHub
+          </a>
+          {' '}· AGPL v3
+        </footer>
       </div>
     </div>
   )
