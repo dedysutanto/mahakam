@@ -13,7 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   token: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, remember?: boolean) => Promise<void>
   register: (data: RegisterData) => Promise<void>
   logout: () => void
   isLoading: boolean
@@ -66,20 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, remember?: boolean) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('🔐 Attempting login for:', email)
-
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-
-      console.log('🔐 Login response status:', response.status)
 
       const data = await response.json()
 
@@ -87,7 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.message || `Login failed: ${response.status}`)
       }
 
-      console.log('🔐 Login successful, redirecting...')
+      if (remember) {
+        localStorage.setItem('rememberedEmail', email)
+      } else {
+        localStorage.removeItem('rememberedEmail')
+      }
 
       // Set token and user
       setToken(data.token)

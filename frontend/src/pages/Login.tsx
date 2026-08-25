@@ -13,16 +13,17 @@ const backgrounds = [
 export default function Login() {
   const { login, isLoading, error } = useAuth()
   const [formData, setFormData] = useState({
-    email: '',
+    email: localStorage.getItem('rememberedEmail') || '',
     password: '',
   })
+  const [remember, setRemember] = useState(() => !!localStorage.getItem('rememberedEmail'))
 
   const bg = useMemo(() => backgrounds[Math.floor(Math.random() * backgrounds.length)], [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await login(formData.email, formData.password)
+      await login(formData.email, formData.password, remember)
     } catch {
       // error is handled by context
     }
@@ -83,6 +84,19 @@ export default function Login() {
               />
             </div>
 
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="remember"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
+                Ingat saya
+              </label>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
@@ -91,7 +105,6 @@ export default function Login() {
               {isLoading ? 'Memproses...' : 'Masuk'}
             </button>
           </form>
-
         </div>
       </div>
     </div>
