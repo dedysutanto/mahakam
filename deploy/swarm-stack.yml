@@ -29,6 +29,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-supersecretkey-change-in-production}
       NODE_ENV: production
       PORT: 3000
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-super@mahakam.id}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
     networks:
       - backend
       - frontend

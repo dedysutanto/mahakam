@@ -25,6 +25,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-random-string-in-production}
       NODE_ENV: production
       PORT: 3000
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-super@mahakam.id}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
     ports:
       - "3000:3000"
     volumes:

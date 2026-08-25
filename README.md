@@ -54,9 +54,15 @@ npm run dev             # http://localhost:5173
 
 ### Default Login
 
-| Role | Email | Password |
-|------|-------|----------|
-| Super Admin | admin@majusejahtera.id | admin123 |
+Super admin credentials are configured via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SUPER_ADMIN_EMAIL` | `super@mahakam.id` | Super admin email |
+| `SUPER_ADMIN_PASSWORD` | *(auto-generated)* | Random 16-char password if not set |
+
+**Docker**: Password is printed in container logs on first start.
+**Local dev**: Seed manually with `npm run seed` (password: `admin123`).
 
 ## Docker
 
@@ -134,6 +140,8 @@ mahakam/
 | `POSTGRES_USER` | `si_keuangan` | PostgreSQL username |
 | `POSTGRES_PASSWORD` | `si_keuangan_pass` | PostgreSQL password |
 | `POSTGRES_DB` | `keuangan_db` | PostgreSQL database name |
+| `SUPER_ADMIN_EMAIL` | `super@mahakam.id` | Super admin email |
+| `SUPER_ADMIN_PASSWORD` | *(auto-generated)* | Super admin password (random if empty) |
 
 ## License
 
