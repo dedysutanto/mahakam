@@ -1,5 +1,14 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuth } from '../lib/AuthContext'
+
+const backgrounds = [
+  '/login-bg/1005.jpg',
+  '/login-bg/1067.jpg',
+  '/login-bg/1080.jpg',
+  '/login-bg/119.jpg',
+  '/login-bg/164.jpg',
+  '/login-bg/342.jpg',
+]
 
 export default function Login() {
   const { login, isLoading, error } = useAuth()
@@ -7,6 +16,8 @@ export default function Login() {
     email: '',
     password: '',
   })
+
+  const bg = useMemo(() => backgrounds[Math.floor(Math.random() * backgrounds.length)], [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -18,13 +29,22 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-accent via-background to-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${bg})` }}
+      />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50" />
+
+      {/* Content */}
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
           <img src="/favicon.svg" alt="Mahakam" className="w-16 h-16 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-foreground">Mahakam</h1>
-          <p className="text-muted-foreground mt-1">Sistem Keuangan</p>
+          <h1 className="text-2xl font-bold text-white">Mahakam</h1>
+          <p className="text-white/70 mt-1">Sistem Keuangan</p>
         </div>
 
         {/* Card */}
