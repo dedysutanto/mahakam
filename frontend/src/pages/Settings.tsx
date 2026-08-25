@@ -831,6 +831,14 @@ export default function SettingsPage() {
               API key untuk akses programatik ke data perusahaan. Gunakan header <code className="bg-muted px-1.5 py-0.5 rounded text-xs">Authorization: Bearer mk_live_...</code>
             </p>
 
+            {tenantId && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                <span>Tenant ID:</span>
+                <code className="font-mono text-foreground">{tenantId}</code>
+                <button onClick={() => navigator.clipboard.writeText(tenantId)} className="text-primary hover:underline">Salin</button>
+              </div>
+            )}
+
             {apiKeyMsg && <p className="text-sm text-primary">{apiKeyMsg}</p>}
 
             {createdApiKey && (

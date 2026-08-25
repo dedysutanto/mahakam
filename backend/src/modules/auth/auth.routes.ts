@@ -225,4 +225,37 @@ export async function authRoutes(app: FastifyInstance) {
 
     return { message: 'Password berhasil diubah' }
   })
+
+  // GET API KEY INFO (works with both JWT and API key auth)
+  app.get('/api-key/info', {
+    preValidation: [authHook(app)],
+  }, async (request: any) => {
+    const { userId, tenantId, role, scopes, email } = request.user as any
+
+    // API key auth
+    if (userId === 'api-key') {
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
+      return {
+        authType: 'api-key',
+        tenantId,
+        tenantName: tenant?.name || null,
+        role: 'admin',
+        scopes: scopes || [],
+      }
+    }
+
+    // JWT auth
+    const tenantUser = await prisma.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId, userId } },
+      include: { tenant: true },
+    })
+
+    return {
+      authType: 'jwt',
+      tenantId,
+      tenantName: tenantUser?.tenant?.name || null,
+      role: tenantUser?.role || 'member',
+      scopes: tenantUser?.scopes || [],
+    }
+  })
 }

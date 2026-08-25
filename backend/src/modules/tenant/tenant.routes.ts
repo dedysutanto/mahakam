@@ -358,6 +358,7 @@ export async function tenantRoutes(app: FastifyInstance) {
       message: 'API key berhasil dibuat — simpan key ini sekarang, hanya ditampilkan sekali.',
       apiKey: {
         id: apiKey.id,
+        tenantId: apiKey.tenantId,
         name: apiKey.name,
         key: rawKey,
         keyPrefix: apiKey.keyPrefix,
