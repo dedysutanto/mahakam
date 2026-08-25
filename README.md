@@ -1,5 +1,7 @@
 # Mahakam — Sistem Informasi Keuangan
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 Sistem manajemen keuangan dan invoice multi-tenant untuk bisnis Indonesia.
 
 ## Tech Stack
@@ -145,4 +147,4 @@ mahakam/
 
 ## License
 
-Private — All rights reserved.
+GNU Affero General Public License v3.0 — see [LICENSE](LICENSE) for details.
