@@ -1,0 +1,288 @@
+import { authHook, validateTenantHook } from '../../middleware/auth'
+import bcrypt from 'bcryptjs'
+import { FastifyInstance } from 'fastify'
+import { prisma } from '../../utils/db'
+import { createWriteStream } from 'fs'
+import { join } from 'path'
+import { pipeline } from 'stream/promises'
+
+export async function tenantRoutes(app: FastifyInstance) {
+  app.decorate('validateTenant', async (request: any, reply: any) => {
+    const { tenantId, userId, role } = request.user as any
+
+    const tenantUser = await prisma.tenantUser.findUnique({
+      where: {
+        tenantId_userId: { tenantId, userId },
+      },
+      include: { tenant: true },
+    })
+
+    if (!tenantUser || !tenantUser.isActive) {
+      reply.code(403)
+      return reply.send({ error: 'Akses ditolak. Anda bukan anggota tenant ini.' })
+    }
+
+    request.tenant = tenantUser.tenant
+    request.tenantRole = tenantUser.role
+  })
+
+  // LIST TENANTS FOR USER
+  app.get('/', {
+    preValidation: [authHook(app)],
+  }, async (request: any) => {
+    const { userId } = request.user as any
+
+    const tenantUsers = await prisma.tenantUser.findMany({
+      where: { userId },
+      include: { tenant: true },
+    })
+
+    return tenantUsers.map((tu: any) => ({
+      id: tu.tenant.id,
+      name: tu.tenant.name,
+      plan: tu.tenant.plan,
+      role: tu.role,
+      isActive: tu.tenant.isActive,
+      subdomain: tu.tenant.subdomain,
+    }))
+  })
+
+  // LIST MEMBERS
+  app.get('/:id/members', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any) => {
+    const { id } = request.params as any
+    const { role } = request.user as any
+
+    if (role !== 'owner' && role !== 'admin') {
+      throw new Error('Akses ditolak')
+    }
+
+    const members = await prisma.tenantUser.findMany({
+      where: { tenantId: id },
+      include: { user: true },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    return members.map((tu: any) => ({
+      id: tu.id,
+      userId: tu.userId,
+      email: tu.user.email,
+      fullName: tu.user.fullName,
+      phone: tu.user.phone,
+      role: tu.role,
+      scopes: tu.scopes || [],
+      isActive: tu.isActive,
+    }))
+  })
+
+  const isAdminRole = (r: string) => r === 'owner' || r === 'admin'
+
+  async function assertNotLastActiveAdmin(tenantId: string, targetUserId: string) {
+    const members = await prisma.tenantUser.findMany({ where: { tenantId } })
+    const activeAdmins = members.filter((m: any) => isAdminRole(m.role) && m.isActive && m.userId !== targetUserId)
+    if (activeAdmins.length === 0) {
+      throw new Error('Perusahaan harus memiliki minimal satu admin aktif')
+    }
+  }
+
+  // ADD MEMBER — attaches an existing user by email, or creates a brand-new staff user
+  app.post('/:id/members', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id } = request.params as any
+    const { role: myRole } = request.user as any
+    if (!isAdminRole(myRole)) throw new Error('Hanya admin perusahaan yang dapat menambah pengguna')
+
+    const { email, password, fullName, role = 'member', scopes = [] } = request.body as any
+    if (!['owner', 'admin', 'member'].includes(role)) throw new Error('Peran tidak valid')
+
+    let user = await prisma.user.findUnique({ where: { email } })
+    if (!user) {
+      if (!password || String(password).length < 6) throw new Error('Password minimal 6 karakter untuk pengguna baru')
+      if (!fullName) throw new Error('Nama lengkap wajib untuk pengguna baru')
+      user = await prisma.user.create({
+        data: {
+          email,
+          fullName,
+          passwordHash: bcrypt.hashSync(String(password), 10),
+        },
+      })
+    }
+
+    const existing = await prisma.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId: id, userId: user.id } },
+    })
+    if (existing) throw new Error('Pengguna sudah menjadi anggota')
+
+    const tu = await prisma.tenantUser.create({
+      data: {
+        tenantId: id,
+        userId: user.id,
+        role,
+        scopes: role === 'member' ? (Array.isArray(scopes) ? scopes : []) : [],
+      },
+    })
+
+    reply.code(201).send({
+      message: 'Anggota berhasil ditambahkan',
+      member: {
+        userId: tu.userId,
+        email: user.email,
+        fullName: user.fullName,
+        role: tu.role,
+        scopes: tu.scopes,
+        isActive: tu.isActive,
+      },
+    })
+  })
+
+  // UPDATE MEMBER (role / scopes / isActive)
+  app.put('/:id/members/:userId', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id, userId } = request.params as any
+    const { role: myRole } = request.user as any
+    if (!isAdminRole(myRole)) throw new Error('Hanya admin perusahaan yang dapat mengubah pengguna')
+
+    const body = request.body as any
+    const target = await prisma.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId: id, userId } },
+    })
+    if (!target) throw new Error('Anggota tidak ditemukan')
+    if (target.role !== 'member') throw new Error('Admin hanya dapat mengedit pengguna staf')
+
+    const data: any = {}
+    if (body.role !== undefined) {
+      if (!['owner', 'admin', 'member'].includes(body.role)) throw new Error('Peran tidak valid')
+      data.role = body.role
+    }
+    if (body.scopes !== undefined) data.scopes = Array.isArray(body.scopes) ? body.scopes : []
+    if (body.isActive !== undefined) data.isActive = Boolean(body.isActive)
+
+    const tu = await prisma.tenantUser.update({
+      where: { tenantId_userId: { tenantId: id, userId } },
+      data,
+    })
+
+    // Admin may reset a staff member's password directly
+    let passwordReset = false
+    if (body.newPassword !== undefined && body.newPassword !== '') {
+      if (String(body.newPassword).length < 6) throw new Error('Password baru minimal 6 karakter')
+      await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: bcrypt.hashSync(String(body.newPassword), 10) },
+      })
+      passwordReset = true
+    }
+
+    reply.send({
+      message: passwordReset ? 'Anggota diperbarui — password sudah direset' : 'Anggota diperbarui',
+      member: { role: tu.role, scopes: tu.scopes, isActive: tu.isActive },
+    })
+  })
+
+  // REMOVE MEMBER
+  app.delete('/:id/members/:userId', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id, userId } = request.params as any
+    const { role: myRole } = request.user as any
+    if (!isAdminRole(myRole)) throw new Error('Hanya admin perusahaan yang dapat menghapus pengguna')
+
+    const target = await prisma.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId: id, userId } },
+    })
+    if (!target) throw new Error('Anggota tidak ditemukan')
+    if (isAdminRole(target.role)) await assertNotLastActiveAdmin(id, userId)
+
+    await prisma.tenantUser.delete({
+      where: {
+        tenantId_userId: { tenantId: id, userId },
+      },
+    })
+
+    reply.send({ message: 'Anggota berhasil dihapus' })
+  })
+
+  // GET TENANT SETTINGS
+  app.get('/settings', {
+    preValidation: [authHook(app)],
+  }, async (request: any) => {
+    const { tenantId } = request.user as any
+    const settings = await prisma.setting.findMany({
+      where: { tenantId },
+      select: { key: true, value: true },
+    })
+    const result: Record<string, string> = {}
+    for (const s of settings) result[s.key] = s.value
+    return result
+  })
+
+  // SAVE TENANT SETTINGS (bulk upsert)
+  app.put('/settings', {
+    preValidation: [authHook(app)],
+  }, async (request: any, reply: any) => {
+    const { tenantId } = request.user as any
+    const entries = request.body as Record<string, string>
+    if (!entries || typeof entries !== 'object') throw new Error('Data tidak valid')
+
+    for (const [key, value] of Object.entries(entries)) {
+      await prisma.setting.upsert({
+        where: { tenantId_key: { tenantId, key } },
+        update: { value: String(value) },
+        create: { tenantId, key, value: String(value) },
+      })
+    }
+
+    reply.send({ message: 'Pengaturan berhasil disimpan' })
+  })
+
+  // UPLOAD TENANT LOGO
+  app.post('/:id/logo', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id } = request.params as any
+    const { role } = request.user as any
+
+    if (role !== 'owner' && role !== 'admin') {
+      throw new Error('Hanya owner/admin yang dapat mengunggah logo')
+    }
+
+    const data = await request.file()
+    if (!data) throw new Error('File tidak ditemukan')
+
+    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml']
+    if (!allowed.includes(data.mimetype)) {
+      throw new Error('Format logo harus PNG, JPEG, atau SVG')
+    }
+
+    const ext = data.mimetype === 'image/png' ? 'png' : data.mimetype === 'image/jpeg' ? 'jpg' : 'svg'
+    const filename = `${id}.${ext}`
+    const filePath = join(process.cwd(), 'uploads', 'logos', filename)
+
+    await pipeline(data.file, createWriteStream(filePath))
+
+    await prisma.tenant.update({
+      where: { id },
+      data: { logoPath: filename },
+    })
+
+    reply.send({ message: 'Logo berhasil diunggah', logoPath: filename })
+  })
+
+  // UPDATE TENANT
+  app.put('/:id', {
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+  }, async (request: any, reply: any) => {
+    const { id } = request.params as any
+    const { name, subdomain } = request.body as any
+
+    await prisma.tenant.update({
+      where: { id },
+      data: { name, subdomain },
+    })
+
+    reply.send({ message: 'Tenant berhasil diperbarui' })
+  })
+}

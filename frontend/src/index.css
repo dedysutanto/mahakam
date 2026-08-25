@@ -1,0 +1,276 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 23% 97%;
+    --foreground: 224 30% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 30% 12%;
+    --primary: 221 70% 44%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 16% 93%;
+    --secondary-foreground: 224 25% 20%;
+    --muted: 220 16% 94%;
+    --muted-foreground: 220 10% 42%;
+    --accent: 221 60% 95%;
+    --accent-foreground: 221 70% 35%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 152 62% 34%;
+    --success-foreground: 150 100% 97%;
+    --border: 220 15% 88%;
+    --input: 220 15% 86%;
+    --ring: 221 70% 50%;
+
+    /* legacy utility shims */
+    --surface-1: 0 0% 100%;
+    --surface-2: 220 20% 96%;
+    --line-strong: 220 14% 84%;
+    --text-1: 224 30% 12%;
+    --text-2: 222 14% 38%;
+    --text-3: 220 9% 48%;
+  }
+
+  .dark {
+    --background: 224 24% 8%;
+    --foreground: 220 20% 94%;
+    --card: 224 20% 11%;
+    --card-foreground: 220 20% 94%;
+    --popover: 225 20% 13%;
+    --popover-foreground: 220 20% 94%;
+    --primary: 221 85% 62%;
+    --primary-foreground: 226 40% 10%;
+    --secondary: 222 16% 18%;
+    --secondary-foreground: 220 16% 88%;
+    --muted: 222 16% 17%;
+    --muted-foreground: 220 12% 62%;
+    --accent: 222 40% 20%;
+    --accent-foreground: 217 80% 78%;
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 152 55% 46%;
+    --success-foreground: 150 100% 97%;
+    --border: 222 14% 20%;
+    --input: 222 14% 22%;
+    --ring: 221 85% 62%;
+
+    --surface-1: 224 20% 11%;
+    --surface-2: 222 16% 17%;
+    --line-strong: 222 12% 26%;
+    --text-1: 220 20% 94%;
+    --text-2: 218 12% 72%;
+    --text-3: 220 10% 56%;
+  }
+
+  * {
+    @apply border-border;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/25 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-card text-foreground hover:bg-muted border border-border;
+  }
+
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+  }
+
+  .btn-success {
+    @apply bg-success text-success-foreground hover:bg-success/90;
+  }
+
+  .btn-ghost {
+    @apply hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  .input {
+    @apply flex h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  select.input option {
+    @apply bg-card text-foreground;
+  }
+
+  .card {
+    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors;
+  }
+
+  .badge-default {
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  .badge-success {
+    @apply bg-success/10 text-success;
+  }
+
+  .badge-destructive {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  .badge-warning {
+    @apply bg-amber-500/15 text-amber-700 dark:text-amber-400;
+  }
+
+  .badge-info {
+    @apply bg-blue-500/10 text-blue-700 dark:text-blue-400;
+  }
+}
+
+/* ---- Dark-mode shims: map hardcoded legacy Tailwind grays used across
+       pages onto theme tokens so every page adapts without a rewrite. ---- */
+@layer base {
+  .dark .bg-white { background-color: hsl(var(--card)); }
+  .dark .bg-gray-50 { background-color: hsl(var(--surface-2)); }
+  .dark .bg-gray-100 { background-color: hsl(var(--muted)); }
+  .dark .bg-gray-200 { background-color: hsl(var(--surface-2)); }
+
+  .dark .text-gray-900 { color: hsl(var(--foreground)); }
+  .dark .text-gray-800 { color: hsl(var(--foreground)); }
+  .dark .text-gray-700 { color: hsl(var(--text-2)); }
+  .dark .text-gray-600 { color: hsl(var(--text-2)); }
+  .dark .text-gray-500 { color: hsl(var(--text-3)); }
+  .dark .text-gray-400 { color: hsl(var(--text-3)); }
+  .dark .text-gray-300 { color: hsl(var(--text-3)); }
+
+  .dark .border-gray-200,
+  .dark .border-gray-100 { border-color: hsl(var(--border)); }
+  .dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--border)); }
+
+  .dark .hover\:bg-gray-50:hover { background-color: hsl(var(--accent)); }
+  .dark .hover\:bg-gray-100:hover { background-color: hsl(var(--muted)); }
+  .dark .hover\:text-blue-600:hover { color: hsl(var(--accent-foreground)); }
+  .dark .hover\:text-red-600:hover { color: hsl(0 72% 66%); }
+  .dark .hover\:text-gray-900:hover { color: hsl(var(--foreground)); }
+  .dark .hover\:text-gray-700:hover { color: hsl(var(--text-2)); }
+
+  .dark .bg-blue-600 { background-color: hsl(var(--primary)); }
+  .dark .bg-blue-50\/50 { background-color: hsl(var(--accent) / 0.5); }
+  .dark .border-blue-100 { border-color: hsl(var(--accent)); }
+  .dark .bg-blue-50 { background-color: hsl(var(--accent)); }
+  .dark .text-blue-700 { color: hsl(var(--accent-foreground)); }
+  .dark .text-blue-600 { color: hsl(var(--accent-foreground)); }
+  .dark .border-blue-600 { border-color: hsl(var(--primary)); }
+  .dark .bg-blue-50\/50 { background-color: hsl(var(--accent) / 0.4); }
+
+  .dark .bg-red-50 { background-color: hsl(0 60% 16%); }
+  .dark .border-red-200 { border-color: hsl(0 45% 28%); }
+  .dark .text-red-600 { color: hsl(0 80% 68%); }
+  .dark .text-red-700 { color: hsl(0 75% 72%); }
+
+  .dark .bg-green-100 { background-color: hsl(var(--success) / 0.15); }
+  .dark .text-green-800 { color: hsl(var(--success)); }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* ---- Touch-friendly tuning (phones & tablets) ----
+   Applies only on coarse-pointer devices so desktop keeps its compact density. */
+@media (pointer: coarse) {
+  /* Prevent iOS Safari auto-zoom: focusable controls need >= 16px font */
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Comfortable tap targets for primary buttons */
+  .btn {
+    min-height: 44px;
+  }
+  .btn-sm {
+    min-height: 38px;
+  }
+
+  /* Bigger checkboxes & radios */
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 22px;
+    height: 22px;
+    accent-color: hsl(var(--primary));
+  }
+
+  /* Table row actions: enlarge hit area without changing desktop look */
+  table td button:not(.btn) {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  table td select {
+    min-height: 40px;
+  }
+  table th,
+  table td {
+    /* slightly roomier cells */
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  /* Modal close / back arrows */
+  button[aria-label='Tutup'],
+  button[aria-label='Kembali'],
+  button[aria-label='Toggle menu'],
+  button[aria-label='Toggle sidebar'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
