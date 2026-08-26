@@ -197,6 +197,9 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
   y += 12
 
   // ---------- items table ----------
+  const hasAnyDiscount = invoice.items.some((item: typeof invoice.items[number]) => (Number(item.discount) || 0) > 0)
+  const effectiveColTotal = hasAnyDiscount ? colTotal : { x: colDisc.x, w: PAGE.right - colDisc.x }
+
   const drawTableHeader = (rowY: number): number => {
     if (t.headerBg) {
       doc.save().rect(PAGE.left, rowY, W, 22).fill(t.headerBg).restore()
@@ -204,16 +207,16 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
       doc.text('Item', colDesc.x, rowY + 7, { width: colDesc.w })
       doc.text('Qty', colQty.x, rowY + 7, { width: colQty.w, align: 'right' })
       doc.text('Harga', colPrice.x, rowY + 7, { width: colPrice.w, align: 'right' })
-      doc.text('Diskon', colDisc.x, rowY + 7, { width: colDisc.w, align: 'right' })
-      doc.text('Total', colTotal.x, rowY + 7, { width: colTotal.w, align: 'right' })
+      if (hasAnyDiscount) doc.text('Diskon', colDisc.x, rowY + 7, { width: colDisc.w, align: 'right' })
+      doc.text('Total', effectiveColTotal.x, rowY + 7, { width: effectiveColTotal.w, align: 'right' })
       return rowY + 22
     }
     doc.font(t.bold).fontSize(8).fillColor(t.headerText === t.title ? t.title : t.headerText)
     doc.text('ITEM', colDesc.x, rowY, { width: colDesc.w, characterSpacing: 0.5 })
     doc.text('QTY', colQty.x, rowY, { width: colQty.w, align: 'right', characterSpacing: 0.5 })
     doc.text('HARGA', colPrice.x, rowY, { width: colPrice.w, align: 'right', characterSpacing: 0.5 })
-    doc.text('DISKON', colDisc.x, rowY, { width: colDisc.w, align: 'right', characterSpacing: 0.5 })
-    doc.text('TOTAL', colTotal.x, rowY, { width: colTotal.w, align: 'right', characterSpacing: 0.5 })
+    if (hasAnyDiscount) doc.text('DISKON', colDisc.x, rowY, { width: colDisc.w, align: 'right', characterSpacing: 0.5 })
+    doc.text('TOTAL', effectiveColTotal.x, rowY, { width: effectiveColTotal.w, align: 'right', characterSpacing: 0.5 })
     if (t.doubleRule) {
       rule(doc, rowY + 15, PAGE.left, PAGE.right, t.strongLine, 1)
       rule(doc, rowY + 18, PAGE.left, PAGE.right, t.strongLine, 0.5)
@@ -248,12 +251,14 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
     doc.text(item.description || '-', colDesc.x, textY, { width: colDesc.w })
     doc.text(String(Number(item.quantity)), colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
-    doc.text(
-      (Number(item.discount) || 0) > 0 ? `-${Number(item.discount)}%` : '-',
-      colDisc.x, textY, { width: colDisc.w, align: 'right' }
-    )
+    if (hasAnyDiscount) {
+      doc.text(
+        (Number(item.discount) || 0) > 0 ? `-${Number(item.discount)}%` : '-',
+        colDisc.x, textY, { width: colDisc.w, align: 'right' }
+      )
+    }
     doc.font(t.body).fillColor(t.text)
-    doc.text(currency(Number(item.lineTotal)), colTotal.x, textY, { width: colTotal.w, align: 'right' })
+    doc.text(currency(Number(item.lineTotal)), effectiveColTotal.x, textY, { width: effectiveColTotal.w, align: 'right' })
 
     if (t.rowRule) rule(doc, rowY + rowH, PAGE.left, PAGE.right, t.rowRule, 0.5)
     rowY += rowH
@@ -488,6 +493,9 @@ export async function generateQuotationPdf(quotationId: string, tenantId: string
   y += 12
 
   // ---------- items table ----------
+  const hasAnyDiscount = quotation.items.some((item: typeof quotation.items[number]) => (Number(item.discount) || 0) > 0)
+  const effectiveColTotal = hasAnyDiscount ? colTotal : { x: colDisc.x, w: PAGE.right - colDisc.x }
+
   const drawTableHeader = (rowY: number): number => {
     if (t.headerBg) {
       doc.save().rect(PAGE.left, rowY, W, 22).fill(t.headerBg).restore()
@@ -495,16 +503,16 @@ export async function generateQuotationPdf(quotationId: string, tenantId: string
       doc.text('Item', colDesc.x, rowY + 7, { width: colDesc.w })
       doc.text('Qty', colQty.x, rowY + 7, { width: colQty.w, align: 'right' })
       doc.text('Harga', colPrice.x, rowY + 7, { width: colPrice.w, align: 'right' })
-      doc.text('Diskon', colDisc.x, rowY + 7, { width: colDisc.w, align: 'right' })
-      doc.text('Total', colTotal.x, rowY + 7, { width: colTotal.w, align: 'right' })
+      if (hasAnyDiscount) doc.text('Diskon', colDisc.x, rowY + 7, { width: colDisc.w, align: 'right' })
+      doc.text('Total', effectiveColTotal.x, rowY + 7, { width: effectiveColTotal.w, align: 'right' })
       return rowY + 22
     }
     doc.font(t.bold).fontSize(8).fillColor(t.headerText === t.title ? t.title : t.headerText)
     doc.text('ITEM', colDesc.x, rowY, { width: colDesc.w, characterSpacing: 0.5 })
     doc.text('QTY', colQty.x, rowY, { width: colQty.w, align: 'right', characterSpacing: 0.5 })
     doc.text('HARGA', colPrice.x, rowY, { width: colPrice.w, align: 'right', characterSpacing: 0.5 })
-    doc.text('DISKON', colDisc.x, rowY, { width: colDisc.w, align: 'right', characterSpacing: 0.5 })
-    doc.text('TOTAL', colTotal.x, rowY, { width: colTotal.w, align: 'right', characterSpacing: 0.5 })
+    if (hasAnyDiscount) doc.text('DISKON', colDisc.x, rowY, { width: colDisc.w, align: 'right', characterSpacing: 0.5 })
+    doc.text('TOTAL', effectiveColTotal.x, rowY, { width: effectiveColTotal.w, align: 'right', characterSpacing: 0.5 })
     if (t.doubleRule) {
       rule(doc, rowY + 15, PAGE.left, PAGE.right, t.strongLine, 1)
       rule(doc, rowY + 18, PAGE.left, PAGE.right, t.strongLine, 0.5)
@@ -539,12 +547,14 @@ export async function generateQuotationPdf(quotationId: string, tenantId: string
     doc.text(item.description || '-', colDesc.x, textY, { width: colDesc.w })
     doc.text(String(Number(item.quantity)), colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
-    doc.text(
-      (Number(item.discount) || 0) > 0 ? `-${Number(item.discount)}%` : '-',
-      colDisc.x, textY, { width: colDisc.w, align: 'right' }
-    )
+    if (hasAnyDiscount) {
+      doc.text(
+        (Number(item.discount) || 0) > 0 ? `-${Number(item.discount)}%` : '-',
+        colDisc.x, textY, { width: colDisc.w, align: 'right' }
+      )
+    }
     doc.font(t.body).fillColor(t.text)
-    doc.text(currency(Number(item.lineTotal)), colTotal.x, textY, { width: colTotal.w, align: 'right' })
+    doc.text(currency(Number(item.lineTotal)), effectiveColTotal.x, textY, { width: effectiveColTotal.w, align: 'right' })
 
     if (t.rowRule) rule(doc, rowY + rowH, PAGE.left, PAGE.right, t.rowRule, 0.5)
     rowY += rowH
