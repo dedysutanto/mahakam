@@ -7,7 +7,7 @@ RUN npm ci
 
 COPY . .
 RUN npx prisma generate
-RUN npx esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:@prisma/client --external:prisma
+RUN npx esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:@prisma/client --external:prisma --external:node:* --packages=external
 
 FROM node:20-alpine
 
