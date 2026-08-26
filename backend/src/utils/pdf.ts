@@ -260,6 +260,7 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
   })
 
   // ---------- totals ----------
+  if (rowY + 130 > PAGE.bottomLimit) { doc.addPage(); rowY = PAGE.top }
   rowY += 12
   rule(doc, rowY, PAGE.left, PAGE.right, t.line, 0.5)
   rowY += 10
@@ -303,6 +304,7 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
   }
 
   if (Number(invoice.amountPaid || 0) > 0) {
+    if (rowY + 40 > PAGE.bottomLimit) { doc.addPage(); rowY = PAGE.top }
     rowY += 2
     totalRow('Dibayar', currency(Number(invoice.amountPaid)), { color: '#059669' })
     const remaining = Number(invoice.total) - Number(invoice.amountPaid)
@@ -549,6 +551,7 @@ export async function generateQuotationPdf(quotationId: string, tenantId: string
   })
 
   // ---------- totals ----------
+  if (rowY + 130 > PAGE.bottomLimit) { doc.addPage(); rowY = PAGE.top }
   rowY += 12
   rule(doc, rowY, PAGE.left, PAGE.right, t.line, 0.5)
   rowY += 10
