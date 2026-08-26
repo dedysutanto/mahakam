@@ -7,8 +7,8 @@ import { TrendingUp, TrendingDown, FileText, ArrowUpRight, ArrowDownRight } from
 
 interface DashboardData {
   overview: {
-    revenue: { amount: number; formatted: string; period: string }
-    expense: { amount: number; formatted: string; period: string }
+    revenue: { amount: number; formatted: string; period: string; change: number | null }
+    expense: { amount: number; formatted: string; period: string; change: number | null }
     profit: { amount: number; formatted: string; isProfit: boolean }
     totalInvoices: number
     unpaidInvoices: number
@@ -72,12 +72,22 @@ export default function Dashboard() {
     )
   }
 
+  const formatChange = (change: number | null, invertColor?: boolean): { text: string; positive: boolean } => {
+    if (change === null) return { text: 'Baru', positive: true }
+    const sign = change >= 0 ? '+' : ''
+    const isPositive = invertColor ? change <= 0 : change >= 0
+    return { text: `${sign}${change}%`, positive: isPositive }
+  }
+
+  const revenueChange = formatChange(data.overview.revenue.change)
+  const expenseChange = formatChange(data.overview.expense.change, true)
+
   const stats = [
     {
       label: `Pendapatan (${data.overview.revenue.period})`,
       value: data.overview.revenue.formatted || 'Rp 0',
-      change: '+12.5%',
-      positive: true,
+      change: revenueChange.text,
+      positive: revenueChange.positive,
       icon: TrendingUp,
       color: 'text-success',
       bg: 'bg-success/10',
@@ -85,8 +95,8 @@ export default function Dashboard() {
     {
       label: `Pengeluaran (${data.overview.expense.period})`,
       value: data.overview.expense.formatted || 'Rp 0',
-      change: '-3.2%',
-      positive: false,
+      change: expenseChange.text,
+      positive: expenseChange.positive,
       icon: TrendingDown,
       color: 'text-destructive',
       bg: 'bg-destructive/10',
