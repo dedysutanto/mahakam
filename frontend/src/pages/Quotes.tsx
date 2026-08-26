@@ -66,7 +66,7 @@ export default function Quotes() {
   const DEFAULT_UNITS = ['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan']
   const [unitOptions, setUnitOptions] = useState<string[]>(DEFAULT_UNITS)
   const defaultUnit = () => (unitOptions.includes('pcs') ? 'pcs' : unitOptions[0] || 'pcs')
-  const [newProduct, setNewProduct] = useState({ name: '', price: 0, unit: 'pcs' })
+  const [newProduct, setNewProduct] = useState({ name: '', price: 0, unit: 'pcs', description: '' })
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const emptyForm = () => ({
@@ -168,7 +168,7 @@ export default function Quotes() {
       const res = await fetch('/api/products/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newProduct.name, price: Number(newProduct.price), unit: newProduct.unit }),
+        body: JSON.stringify({ name: newProduct.name, price: Number(newProduct.price), unit: newProduct.unit, description: newProduct.description || null }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -178,7 +178,7 @@ export default function Quotes() {
       setProducts([...products, created])
       setItem(newProdIdx, { productId: created.id, description: created.name, unitPrice: Number(created.price) })
       setNewProdIdx(null)
-      setNewProduct({ name: '', price: 0, unit: defaultUnit() })
+      setNewProduct({ name: '', price: 0, unit: defaultUnit(), description: '' })
     } catch (err: any) {
       alert(err.message)
     }
@@ -641,29 +641,46 @@ export default function Quotes() {
                   <div className="border border-accent bg-accent/40 rounded-lg p-3 space-y-3 mt-2">
                     <p className="text-xs font-semibold text-primary uppercase tracking-wide">Produk Baru</p>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <input
-                        type="text" required placeholder="Nama produk *" className="input md:col-span-2"
-                        value={newProduct.name}
-                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                      />
-                      <input
-                        type="number" min="0" required placeholder="Harga jual *" className="input"
-                        value={newProduct.price}
-                        onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
-                      />
-                      <select
-                        className="input"
-                        title="Satuan produk"
-                        value={newProduct.unit}
-                        onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                      >
-                        {unitOptions.map((u) => (
-                          <option key={u} value={u}>{u}</option>
-                        ))}
-                      </select>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Nama *</label>
+                        <input
+                          type="text" required placeholder="cth: Jasa Instalasi" className="input"
+                          value={newProduct.name}
+                          onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Harga (Rp) *</label>
+                        <input
+                          type="number" min="0" required placeholder="0" className="input"
+                          value={newProduct.price}
+                          onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Satuan</label>
+                        <select
+                          className="input"
+                          title="Satuan produk"
+                          value={newProduct.unit}
+                          onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                        >
+                          {unitOptions.map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-4">
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Deskripsi</label>
+                        <input
+                          type="text" placeholder="Deskripsi produk (opsional)" className="input"
+                          value={newProduct.description}
+                          onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                        />
+                      </div>
                     </div>
                     <div className="flex justify-end gap-2">
-                      <button type="button" className="btn btn-secondary" onClick={() => { setNewProdIdx(null); setNewProduct({ name: '', price: 0, unit: defaultUnit() }) }}>
+                      <button type="button" className="btn btn-secondary" onClick={() => { setNewProdIdx(null); setNewProduct({ name: '', price: 0, unit: defaultUnit(), description: '' }) }}>
                         Batal
                       </button>
                       <button type="button" className="btn btn-primary" onClick={handleCreateProduct}>

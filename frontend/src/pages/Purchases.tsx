@@ -399,21 +399,30 @@ export default function Purchases() {
                 <div className="border border-accent bg-accent/40 rounded-lg p-3 space-y-3">
                   <p className="text-xs font-semibold text-primary uppercase tracking-wide">Vendor Baru</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input
-                      type="text" required placeholder="Nama vendor *" className="input"
-                      value={newVendor.name}
-                      onChange={(e) => setNewVendor({ ...newVendor, name: e.target.value })}
-                    />
-                    <input
-                      type="email" placeholder="Email" className="input"
-                      value={newVendor.email}
-                      onChange={(e) => setNewVendor({ ...newVendor, email: e.target.value })}
-                    />
-                    <input
-                      type="text" placeholder="Telepon" className="input"
-                      value={newVendor.phone}
-                      onChange={(e) => setNewVendor({ ...newVendor, phone: e.target.value })}
-                    />
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Nama *</label>
+                      <input
+                        type="text" required placeholder="cth: CV Sumber Makmur" className="input"
+                        value={newVendor.name}
+                        onChange={(e) => setNewVendor({ ...newVendor, name: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
+                      <input
+                        type="email" placeholder="email@vendor.co.id" className="input"
+                        value={newVendor.email}
+                        onChange={(e) => setNewVendor({ ...newVendor, email: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Telepon</label>
+                      <input
+                        type="text" placeholder="08xx xxxx xxxx" className="input"
+                        value={newVendor.phone}
+                        onChange={(e) => setNewVendor({ ...newVendor, phone: e.target.value })}
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2">
                     <button type="button" className="btn btn-secondary" onClick={() => { setNewVendorOpen(false); setNewVendor(emptyNewVendor) }}>
