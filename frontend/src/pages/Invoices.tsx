@@ -453,6 +453,7 @@ export default function Invoices() {
         quantity: Number(it.quantity),
         unitPrice: Number(it.unitPrice),
         discount: Number(it.discount ?? 0),
+        unit: it.product?.unit || '',
         taxRate: Number(inv.taxRate || 0),
       }
     }),
@@ -753,7 +754,7 @@ export default function Invoices() {
                         {formData.items.map((item, idx) => (
                           <tr key={idx}>
                             <td className="px-3 py-2 text-foreground">{item.description || '-'}</td>
-                            <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)} {item.product?.unit}</td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)}{item.unit ? ' ' + item.unit : ''}</td>
                             <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(Number(item.unitPrice))}</td>
                             {hasDiscount && (
                             <td className="px-3 py-2 text-right text-muted-foreground">

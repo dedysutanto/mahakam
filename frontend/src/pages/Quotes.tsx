@@ -219,6 +219,7 @@ export default function Quotes() {
         quantity: Number(it.quantity),
         unitPrice: Number(it.unitPrice),
         discount: Number(it.discount || 0),
+        unit: it.product?.unit || '',
       }
     }),
     notes: q.notes || '',
@@ -497,7 +498,7 @@ export default function Quotes() {
                         {formData.items.map((item, idx) => (
                           <tr key={idx}>
                             <td className="px-3 py-2 text-foreground">{item.description || item.productId || '-'}</td>
-                            <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)} {item.product?.unit}</td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)}{item.unit ? ' ' + item.unit : ''}</td>
                             <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(Number(item.unitPrice))}</td>
                             {hasDiscount && (
                             <td className="px-3 py-2 text-right text-muted-foreground">
