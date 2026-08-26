@@ -66,6 +66,9 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V19: CORS restricted to configured `CORS_ORIGIN` env var (comma-separated list).
 - V20: Mass-assignment prevented — update routes use field whitelists.
 - V21: Docker container runs as non-root user (node).
+- V22: Rate limiting via `@fastify/rate-limit`: global 100 req/min per IP; login endpoint 5 req/min per IP (brute-force protection).
+- V23: Item tables (PDF + frontend view mode): Diskon column rendered only when ≥1 line has discount > 0; product unit rendered after quantity (`10 pcs`); totals Diskon row only when discount > 0.
+- V24: `/uploads/*` served by backend static root; nginx proxies `location ^~ /uploads/` → api (prefix match must beat regex asset block); `uploads` named volume persists logos; logos dir auto-created at entrypoint and upload route.
 
 ## §T — tasks
 
@@ -102,6 +105,13 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T29 | x | red-team security audit + fixes (JWT_SECRET required, CORS restrict, mass-assignment whitelist, SVG upload, Docker non-root) | V12,V19,V20,V21 |
 | T30 | x | AGPL v3 license | — |
 | T31 | x | OpenAPI/Swagger route definitions | — |
+| T32 | x | rate limiting: global 100 req/min, login 5 req/min | V22 |
+| T33 | x | dashboard real % change vs previous period (previousPeriodFilter) | — |
+| T34 | x | logo upload persistence: entrypoint mkdir, route mkdirSync, uploads volume | V24 |
+| T35 | x | nginx `/uploads/` proxy to api, `^~` precedence over asset regex | V24 |
+| T36 | x | settings: remove hardcoded bank placeholders, fields kept for PDF | — |
+| T37 | x | PDF: hide Diskon column when no item discounted; Total column expands | V23 |
+| T38 | x | unit after quantity: backend includes load product; PDF + views render it; mappers carry flat unit | V23 |
 
 ## §B — bugs
 
@@ -113,3 +123,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B4 | 2026-08-25 | CORS reflects all origins | Restricted to CORS_ORIGIN env var |
 | B5 | 2026-08-25 | Mass-assignment on update routes | Field whitelists on Customer, Product, Tax, Expense |
 | B6 | 2026-08-25 | SVG upload allows stored XSS | PNG/JPEG only |
+| B7 | 2026-08-25 | Dashboard shows `undefined%` when previous period has no data | `formatChange` uses `== null` instead of `=== null` (T33) |
+| B8 | 2026-08-25 | Logo upload ENOENT — `uploads/logos` absent in container volume shadow | mkdir at entrypoint + route mkdirSync (T34,V24) |
+| B9 | 2026-08-25 | nginx regex `~* \.(png)$` intercepted `/uploads/logos/*.png` → 404 | `location ^~ /uploads/` prefix takes precedence (T35,V24) |
+| B10 | 2026-08-26 | View-mode QTY showed no unit — form mappers dropped nested `product` object so `item.product?.unit` undefined | Mappers carry flat `unit: it.product?.unit || ''`; JSX reads `item.unit` (T38,V23) |
