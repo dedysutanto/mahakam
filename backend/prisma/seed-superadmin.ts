@@ -1,7 +1,9 @@
 // Bootstrap the first Super Admin.
 // Usage: SUPER_ADMIN_EMAIL=... SUPER_ADMIN_PASSWORD=... SUPER_ADMIN_NAME=... npx tsx prisma/seed-superadmin.ts
-import { prisma } from '../src/utils/db'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+
+const prisma = new PrismaClient()
 
 async function main() {
   const email = process.env.SUPER_ADMIN_EMAIL || 'super@mahakam.id'
