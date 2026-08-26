@@ -122,6 +122,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T42 | x | inline "Produk Baru" panel gains Satuan dropdown from managed unit list (Faktur); full flow ported to Penawaran (was catalog-pick only) | V25 |
 | T43 | x | labeled fields on all five inline creation panels (Produk Baru ×2, Pelanggan Baru, Vendor Baru ×2); Deskripsi captured on inline product creation | V25 |
 | T44 | x | dashboard Total Pelanggan counts customers only (excludes vendors) | V28,B14 |
+| T45 | x | recap table: Klien column dropped, Number column 190pt, wrap-aware row heights, summary shows "N faktur" | B15 |
 
 ## §B — bugs
 
@@ -141,3 +142,4 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B12 | 2026-08-26 | Browser back while in Detail/form exited the whole module to the previous real history entry (often Buku Besar) — overlays were state-only with no history entries | `useFormHistory`: marker pushed on open; popstate closes overlay to list (T40,V26) |
 | B13 | 2026-08-26 | Expense PUT updated only the row (JE went stale) and DELETE orphaned the posted journal entry — Buku Besar silently desynced | PUT rebuilds linked JE lines/date/description in transaction; DELETE removes linked JE too; Edit button added to UI (T41,V27) |
 | B14 | 2026-08-26 | Dashboard "Total Pelanggan" counted vendors too (dual-purpose customers table had no type filter) | Count filtered to `type: 'customer'` (T44,V28) |
+| B15 | 2026-08-26 | Long invoice numbers (e.g. 018/INVOICE/OSB/VIII/2026) wrapped inside the 80pt recap Number column and overlapped following rows because rows advanced a fixed 16pt | Klien column removed, Number column 190pt, wrap-aware row heights via heightOfString (T45) |

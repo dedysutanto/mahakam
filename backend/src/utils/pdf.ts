@@ -705,17 +705,17 @@ export async function generateRecapPdf(invoiceIds: string[], tenantId: string): 
   }
   y += 14
 
-  // Invoice table
-  const colNum = { x: L, w: 80 }
-  const colClient = { x: L + 85, w: 120 }
-  const colJml = { x: L + 210, w: 100 }
-  const colSaldo = { x: L + 315, w: 100 }
+  // Invoice table — Klien column removed (recap is single-client by rule);
+  // Number column widened; rows are wrap-aware so long numbering patterns
+  // never overlap the next row
+  const colNum = { x: L, w: 190 }
+  const colJml = { x: R - 300, w: 110 }
+  const colSaldo = { x: R - 190, w: 110 }
   const colTgl = { x: R - 75, w: 75 }
 
   const tableHeaderY = y
   doc.font('Helvetica-Bold').fontSize(9).fillColor('#111827')
   doc.text('Number', colNum.x, tableHeaderY, { width: colNum.w })
-  doc.text('Klien', colClient.x, tableHeaderY, { width: colClient.w })
   doc.text('Jumlah', colJml.x, tableHeaderY, { width: colJml.w, align: 'right' })
   doc.text('Saldo', colSaldo.x, tableHeaderY, { width: colSaldo.w, align: 'right' })
   doc.text('Tanggal', colTgl.x, tableHeaderY, { width: colTgl.w, align: 'right' })
@@ -726,19 +726,18 @@ export async function generateRecapPdf(invoiceIds: string[], tenantId: string): 
   for (const inv of invoices) {
     const saldo = Math.max(Number(inv.total) - Number(inv.amountPaid || 0), 0)
     doc.text(inv.invoiceNumber, colNum.x, y, { width: colNum.w })
-    doc.text(inv.customerName, colClient.x, y, { width: colClient.w })
     doc.text(currency(Number(inv.total)), colJml.x, y, { width: colJml.w, align: 'right' })
     doc.text(currency(saldo), colSaldo.x, y, { width: colSaldo.w, align: 'right' })
     doc.text(new Date(inv.issueDate).toLocaleDateString('id-ID'), colTgl.x, y, { width: colTgl.w, align: 'right' })
-    y += 16
+    const numH = doc.heightOfString(inv.invoiceNumber, { width: colNum.w })
+    y += Math.max(numH + 6, 16)
   }
   rule(doc, y, L, R, '#D1D5DB', 0.5)
   y += 8
 
   // Summary row
   doc.font('Helvetica-Bold').fontSize(9).fillColor('#111827')
-  doc.text(client.customerName || '-', colClient.x, y, { width: colClient.w })
-  doc.text(String(invoices.length), L + 180, y, { width: 40, align: 'right' })
+  doc.text(`${invoices.length} faktur`, colNum.x, y, { width: colNum.w })
   doc.text(currency(totalJumlah), colJml.x, y, { width: colJml.w, align: 'right' })
   doc.text(currency(totalSaldo), colSaldo.x, y, { width: colSaldo.w, align: 'right' })
   y += 24
