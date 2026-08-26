@@ -29,6 +29,12 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // LIST TENANTS FOR USER
   app.get('/', {
+    schema: {
+      tags: ['Perusahaan'],
+      summary: 'List user companies',
+      description: 'List all companies (tenants) the authenticated user belongs to.',
+      security: [{ BearerAuth: [] }],
+    },
     preValidation: [authHook(app)],
   }, async (request: any) => {
     const { userId } = request.user as any
@@ -50,6 +56,13 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // LIST MEMBERS
   app.get('/:id/members', {
+    schema: {
+      tags: ['Pengguna & Akses'],
+      summary: 'List company members',
+      description: 'List all members of a company with their roles and scopes. Admin only.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -89,6 +102,24 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // ADD MEMBER — attaches an existing user by email, or creates a brand-new staff user
   app.post('/:id/members', {
+    schema: {
+      tags: ['Pengguna & Akses'],
+      summary: 'Add company member',
+      description: 'Add a member to the company. If email exists, attaches existing user. If not, creates new user with the given password. Admin only.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+      body: {
+        type: 'object',
+        required: ['email'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string', minLength: 6, description: 'Required for new users' },
+          fullName: { type: 'string', description: 'Required for new users' },
+          role: { type: 'string', enum: ['owner', 'admin', 'member'], default: 'member' },
+          scopes: { type: 'array', items: { type: 'string' }, description: 'Module scopes for staff role' },
+        },
+      },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -140,6 +171,22 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // UPDATE MEMBER (role / scopes / isActive)
   app.put('/:id/members/:userId', {
+    schema: {
+      tags: ['Pengguna & Akses'],
+      summary: 'Update member role, scopes, or status',
+      description: 'Update a member role, scopes, active status, or reset their password. Admin can only edit staff members.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' }, userId: { type: 'string' } }, required: ['id', 'userId'] },
+      body: {
+        type: 'object',
+        properties: {
+          role: { type: 'string', enum: ['owner', 'admin', 'member'] },
+          scopes: { type: 'array', items: { type: 'string' } },
+          isActive: { type: 'boolean' },
+          newPassword: { type: 'string', minLength: 6, description: 'Reset member password' },
+        },
+      },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, userId } = request.params as any
@@ -185,6 +232,13 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // REMOVE MEMBER
   app.delete('/:id/members/:userId', {
+    schema: {
+      tags: ['Pengguna & Akses'],
+      summary: 'Remove member from company',
+      description: 'Remove a member from the company. Prevents removing the last active admin.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' }, userId: { type: 'string' } }, required: ['id', 'userId'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, userId } = request.params as any
@@ -208,6 +262,12 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // GET TENANT SETTINGS
   app.get('/settings', {
+    schema: {
+      tags: ['Pengaturan'],
+      summary: 'Get company settings',
+      description: 'Get all settings key-value pairs for the current company.',
+      security: [{ BearerAuth: [] }],
+    },
     preValidation: [authHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -222,6 +282,13 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // SAVE TENANT SETTINGS (bulk upsert)
   app.put('/settings', {
+    schema: {
+      tags: ['Pengaturan'],
+      summary: 'Save company settings',
+      description: 'Bulk upsert settings key-value pairs. Accepts any object with string keys and values.',
+      security: [{ BearerAuth: [] }],
+      body: { type: 'object', additionalProperties: { type: 'string' } },
+    },
     preValidation: [authHook(app)],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
@@ -241,6 +308,13 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // UPLOAD TENANT LOGO
   app.post('/:id/logo', {
+    schema: {
+      tags: ['Pengaturan'],
+      summary: 'Upload company logo',
+      description: 'Upload a PNG or JPEG logo for the company. Max 5MB.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -293,6 +367,13 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // LIST API KEYS
   app.get('/:id/api-keys', {
+    schema: {
+      tags: ['API Keys'],
+      summary: 'List API keys',
+      description: 'List all API keys for the tenant. Admin only. Returns key prefix (never full key), scopes, status, and last used timestamp.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -318,6 +399,22 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // CREATE API KEY
   app.post('/:id/api-keys', {
+    schema: {
+      tags: ['API Keys'],
+      summary: 'Create API key',
+      description: 'Create a new API key. The full key is only shown once in the response. Use tenantId from /api-key/info for integration.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+      body: {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name: { type: 'string', minLength: 1, description: 'Descriptive name for this API key' },
+          scopes: { type: 'array', items: { type: 'string', enum: ['faktur', 'produk', 'pelanggan', 'suplier', 'pembelian', 'biaya', 'buku-besar', 'pelaporan', 'pengaturan', 'pengguna'] }, description: 'Module access scopes (optional, defaults to all)' },
+          expiresIn: { type: 'string', enum: ['30d', '90d', '180d', '1y', 'never'], description: 'Expiry duration (optional, defaults to never)' },
+        },
+      },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -371,6 +468,13 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // REVOKE (DELETE) API KEY
   app.delete('/:id/api-keys/:keyId', {
+    schema: {
+      tags: ['API Keys'],
+      summary: 'Delete API key',
+      description: 'Permanently delete an API key. This cannot be undone.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' }, keyId: { type: 'string' } }, required: ['id', 'keyId'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, keyId } = request.params as any
@@ -387,6 +491,14 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // TOGGLE API KEY ACTIVE STATUS
   app.put('/:id/api-keys/:keyId', {
+    schema: {
+      tags: ['API Keys'],
+      summary: 'Toggle API key active status',
+      description: 'Enable or disable an API key without deleting it. Disabled keys cannot authenticate.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' }, keyId: { type: 'string' } }, required: ['id', 'keyId'] },
+      body: { type: 'object', required: ['isActive'], properties: { isActive: { type: 'boolean' } } },
+    },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, keyId } = request.params as any

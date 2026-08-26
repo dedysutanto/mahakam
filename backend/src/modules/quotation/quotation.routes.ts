@@ -21,6 +21,7 @@ function quoteSnapshot(customer: { name: string; email: string | null; phone: st
 export async function quotationRoutes(app: FastifyInstance) {
   // LIST QUOTATIONS
   app.get('/', {
+    schema: { tags: ['Penawaran'], summary: 'List all quotations', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -52,6 +53,7 @@ export async function quotationRoutes(app: FastifyInstance) {
 
   // GET SINGLE QUOTATION
   app.get('/:id', {
+    schema: { tags: ['Penawaran'], summary: 'Get a quotation by ID', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -68,6 +70,7 @@ export async function quotationRoutes(app: FastifyInstance) {
 
   // CREATE QUOTATION
   app.post('/', {
+    schema: { tags: ['Penawaran'], summary: 'Create a new quotation', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
@@ -141,6 +144,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // UPDATE QUOTATION (draft only)
   app.put('/:id', {
+    schema: { tags: ['Penawaran'], summary: 'Update a quotation (draft only)', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -218,6 +222,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // UPDATE STATUS — one-way: draft → sent → accepted | rejected
   app.put('/:id/status', {
+    schema: { tags: ['Penawaran'], summary: 'Update quotation status', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -240,6 +245,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // CONVERT ACCEPTED QUOTATION → DRAFT INVOICE (one-time)
   app.post('/:id/convert', {
+    schema: { tags: ['Penawaran'], summary: 'Convert accepted quotation to invoice', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -301,6 +307,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // DELETE QUOTATION (draft or rejected only; never converted)
   app.delete('/:id', {
+    schema: { tags: ['Penawaran'], summary: 'Delete a quotation', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -319,6 +326,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // PDF
   app.get('/:id/pdf', {
+    schema: { tags: ['Penawaran'], summary: 'Download quotation as PDF', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('penawaran')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any

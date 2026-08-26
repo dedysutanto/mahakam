@@ -5,6 +5,7 @@ import { prisma } from '../../utils/db'
 export async function customerRoutes(app: FastifyInstance) {
   // LIST CUSTOMERS
   app.get('/', {
+    schema: { tags: ['Pelanggan'], summary: 'List all customers', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -40,6 +41,7 @@ export async function customerRoutes(app: FastifyInstance) {
 
   // GET SINGLE CUSTOMER
   app.get('/:id', {
+    schema: { tags: ['Pelanggan'], summary: 'Get a customer by ID', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -57,6 +59,7 @@ export async function customerRoutes(app: FastifyInstance) {
 
   // CREATE CUSTOMER
   app.post('/', {
+    schema: { tags: ['Pelanggan'], summary: 'Create a new customer', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pelanggan')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
@@ -83,6 +86,7 @@ export async function customerRoutes(app: FastifyInstance) {
 
   // UPDATE CUSTOMER
   app.put('/:id', {
+    schema: { tags: ['Pelanggan'], summary: 'Update a customer', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pelanggan')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -105,6 +109,7 @@ export async function customerRoutes(app: FastifyInstance) {
 
   // DELETE CUSTOMER
   app.delete('/:id', {
+    schema: { tags: ['Pelanggan'], summary: 'Delete a customer', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pelanggan')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any

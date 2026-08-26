@@ -31,6 +31,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
   }
 
   app.get('/', {
+    schema: { tags: ['Dashboard'], summary: 'Get dashboard overview', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any

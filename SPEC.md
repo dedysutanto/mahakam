@@ -9,18 +9,19 @@ Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first R
 - Language: Bahasa Indonesia primary.
 - Mobile-first: React 19 + Vite 6 + TailwindCSS 3, touch-friendly, responsive.
 - Backend: Fastify 5 (Node.js ESM), Prisma 6 ORM, PostgreSQL 16.
-- Auth: JWT (`@fastify/jwt`), bcryptjs passwords. Two-tier: Super Admin + Company Admin/Staff.
+- Auth: JWT (`@fastify/jwt`) + API key (`Bearer mk_live_...`). Two-tier: Super Admin + Company Admin/Staff.
+- API keys: bcrypt-hashed, format `mk_live_<20 hex>`, per-module scopes, optional expiry (30d/90d/180d/1y/never). Admin-only CRUD. Shown once on creation.
 - PDF: PDFKit for invoices, quotations, recap billing statements. Direct download, no signed tokens.
 - Multi-tenant: shared infra, `tenantId` on all business tables. Roles: `owner`, `admin`, `member`. Super Admin (`isSuperAdmin`) manages tenants.
-- Per-menu scopes on TenantUser (`scopes String[]`): buku-besar, faktur, penawaran, pembelian, pengeluaran, produk, pelanggan, pajak, laporan, pengaturan. Owner/admin = implicit ALL scopes. Staff users get explicit scope picks; backend enforces per route module; frontend hides menus without scope.
+- Per-menu scopes on TenantUser/ApiKey (`scopes String[]`): buku-besar, faktur, penawaran, pembelian, pengeluaran, produk, pelanggan, pajak, laporan, pengaturan. Owner/admin = implicit ALL scopes. Staff/API keys must have explicit scopes; backend enforces per route module; frontend hides menus without scope.
 - Company admin cannot edit/delete the company's last active admin.
 - Deploy: Docker (standalone compose + swarm stack), postgres:16-alpine, nginx for frontend.
 - Out of scope: complex tax engine (basic rates only), AP three-way matching/approvals/SLA, blockchain/crypto.
 
 ## §I — interfaces
 
-REST API under `/api`, auth via JWT Bearer token (401 missing, 403 invalid):
-- `POST /api/auth/login` → `{ token, user }`, `GET /api/auth/me` → user profile
+REST API under `/api`, auth via JWT Bearer token or API key Bearer token (401 missing, 403 invalid):
+- `POST /api/auth/login` → `{ token, user }`, `GET /api/auth/me` → user profile, `GET /api/auth/api-key/info` → tenant/scope info
 - `POST/GET/PUT/DELETE /api/invoices`, `GET /api/invoices/{id}`, `GET /api/invoices/{id}/pdf`, `PUT /api/invoices/{id}/status`, `POST /api/invoices/{id}/payments`, `POST /api/invoices/recap`
 - `POST/GET/PUT/DELETE /api/quotations`, `POST /api/quotations/{id}/convert`
 - `POST/GET/PUT/DELETE /api/purchases`, `PUT /api/purchases/{id}/status`
@@ -31,34 +32,40 @@ REST API under `/api`, auth via JWT Bearer token (401 missing, 403 invalid):
 - `GET /api/reports/profit-loss`, `/balance-sheet`, `/cash-flow`, `/expenses`, `/receivables-payables`
 - `GET /api/dashboard` → overview stats
 - `GET/PUT /api/tenants/settings` (company settings, bank info, logo upload)
-- `GET /api/tenants/members`, `POST /api/tenants/members`, `PUT /api/tenants/members/{userId}`
+- `GET /api/tenants/members`, `POST /api/tenants/members`, `PUT /api/tenants/members/{userId}`, `DELETE /api/tenants/members/{userId}`
+- `GET /api/tenants/{id}/api-keys`, `POST /api/tenants/{id}/api-keys`, `PUT /api/tenants/{id}/api-keys/{keyId}`, `DELETE /api/tenants/{id}/api-keys/{keyId}`
 - `GET /api/ledgers`, `POST /api/ledgers`, `PUT /api/ledgers/{id}`, `DELETE /api/ledgers/{id}`
 - Super Admin: `GET /api/superadmin/tenants`, `POST /api/superadmin/tenants`
 - `GET /health` (public)
+- Swagger UI: `GET /docs` (non-production only)
 
-Env vars: `DATABASE_URL`, `JWT_SECRET`, `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `NODE_ENV`, `PORT`.
+Env vars: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `APP_VERSION`, `NODE_ENV`, `PORT`.
 
-Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:16). Standalone compose + swarm stack with replicas/healthchecks.
+Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:16). Standalone compose + swarm stack with replicas/healthchecks. Images: `ghcr.io/dedysutanto/mahakam-backend`, `ghcr.io/dedysutanto/mahakam-frontend`.
 
 ## §V — invariants
 
-- V1: every `/api` request without valid JWT → 401; invalid → 403.
-- V2: every tenant query filtered by `tenantId` from JWT context; superadmin bypass only with explicit tenant selection.
+- V1: every `/api` request without valid JWT or API key → 401; invalid → 403.
+- V2: every tenant query filtered by `tenantId` from JWT/API key context; superadmin bypass only with explicit tenant selection.
 - V3: JWT token short-lived (24h), stored in localStorage, never in URL.
 - V4: invoice/PO number auto-generated from settings pattern; per-tenant sequence counter never reused.
 - V5: invoice status transitions draft→sent→paid, partial allowed; any non-paid→draft revert; else 422. Paid invoices not editable.
 - V6: default PPN from settings; per-line tax; total = subtotal + tax.
 - V7: money formatted as Rp Indonesian grouping.
 - V8: role/permission enforced server-side per endpoint, never client-trusted.
-- V9: Per-menu scopes enforced; owner/admin = ALL scopes; staff = explicit scopes only.
+- V9: Per-menu scopes enforced; owner/admin = ALL scopes; staff/API keys = explicit scopes only. API keys do NOT get admin bypass on requireScope.
 - V10: Prisma migrations; PostgreSQL.
 - V11: Company admin restricted to own `tenantId`; cannot assign superadmin; cannot manage other tenants' users.
-- V12: Docker services reachable by service name; env vars for secrets, not committed.
+- V12: Docker services reachable by service name; env vars for secrets, not committed. JWT_SECRET and POSTGRES_PASSWORD required (no defaults).
 - V13: PO status draft→sent→received→ordered; cancel any stage.
 - V14: paid invoices not editable (422); edit allowed otherwise.
 - V15: PDF generation via PDFKit; invoice PDF includes company info, bank details, items, totals, notes/terms.
 - V16: Recap billing statement aggregates non-draft invoices per customer into single PDF.
-- V17: Company logo stored in `uploads/logos/{tenantId}.png`; sidebar + PDF header use it; favicon fallback to Mahakam logo.
+- V17: Company logo stored in `uploads/logos/{tenantId}.png`; sidebar + PDF header use it; favicon fallback to Mahakam logo. PNG/JPEG only (no SVG).
+- V18: API keys bcrypt-hashed; full key shown once on creation; prefix used for lookup; expiry checked on each request; lastUsedAt updated.
+- V19: CORS restricted to configured `CORS_ORIGIN` env var (comma-separated list).
+- V20: Mass-assignment prevented — update routes use field whitelists.
+- V21: Docker container runs as non-root user (node).
 
 ## §T — tasks
 
@@ -66,7 +73,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 |----|--------|------|-------|
 | T1 | x | scaffold repo: backend/, frontend/, docker/, docker-compose | V10,V12 |
 | T2 | x | Fastify skeleton + Prisma + PostgreSQL | V10 |
-| T3 | x | DB models (16 tables: Tenant, User, TenantUser, Ledger, JournalEntry, JournalLine, Invoice, InvoiceItem, Payment, Expense, Customer, Quotation, QuotationItem, Product, Purchase, PurchaseItem, Setting, Tax) | V1,V2,V10 |
+| T3 | x | DB models (17 tables: Tenant, User, TenantUser, Ledger, JournalEntry, JournalLine, Invoice, InvoiceItem, Payment, Expense, Customer, Quotation, QuotationItem, Product, Purchase, PurchaseItem, Setting, Tax, ApiKey) | V1,V2,V10 |
 | T4 | x | JWT auth + role/permission deps | V1,V8 |
 | T5 | x | tenant + user CRUD (email username, admin creates users) | V2,V11 |
 | T6 | x | two-tier admin: isSuperAdmin + TenantUser.scopes | V9,V11 |
@@ -89,6 +96,12 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T23 | x | login: random background image, remember me, demo info hidden | — |
 | T24 | x | logo: SVG with open design, favicon, sidebar fallback | V17 |
 | T25 | x | superadmin credentials from env vars (auto-generated password) | — |
+| T26 | x | API key management (admin-only CRUD, bcrypt hash, scopes, expiry) | V18,V9 |
+| T27 | x | API key auth middleware (JWT fallback to Bearer mk_live_...) | V1,V18 |
+| T28 | x | API key tenant ID discoverability (creation response, /api/auth/api-key/info, Settings UI) | V18 |
+| T29 | x | red-team security audit + fixes (JWT_SECRET required, CORS restrict, mass-assignment whitelist, SVG upload, Docker non-root) | V12,V19,V20,V21 |
+| T30 | x | AGPL v3 license | — |
+| T31 | x | OpenAPI/Swagger route definitions | — |
 
 ## §B — bugs
 
@@ -96,3 +109,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 |----|------|-------|-----|
 | B1 | 2026-08-25 | `logo_failed` localStorage permanent — mobile stuck with SK fallback | Switched to sessionStorage + display:none until onLoad (V17) |
 | B2 | 2026-08-25 | TypeScript build fails in Docker (missing .js extensions) | Use esbuild bundle instead of tsc for Docker build |
+| B3 | 2026-08-25 | JWT secret defaults to public string | Required via env var, app crashes without it |
+| B4 | 2026-08-25 | CORS reflects all origins | Restricted to CORS_ORIGIN env var |
+| B5 | 2026-08-25 | Mass-assignment on update routes | Field whitelists on Customer, Product, Tax, Expense |
+| B6 | 2026-08-25 | SVG upload allows stored XSS | PNG/JPEG only |

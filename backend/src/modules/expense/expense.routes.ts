@@ -6,6 +6,7 @@ import { generateDocNumber } from '../../utils/numbering'
 export async function expenseRoutes(app: FastifyInstance) {
   // LIST EXPENSES
   app.get('/', {
+    schema: { tags: ['Biaya'], summary: 'List all expenses', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -39,6 +40,7 @@ export async function expenseRoutes(app: FastifyInstance) {
 
   // GET SINGLE EXPENSE
   app.get('/:id', {
+    schema: { tags: ['Biaya'], summary: 'Get an expense by ID', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -56,6 +58,7 @@ export async function expenseRoutes(app: FastifyInstance) {
 
   // CREATE EXPENSE
   app.post('/', {
+    schema: { tags: ['Biaya'], summary: 'Create a new expense', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
   }, async (request: any, reply: any) => {
     const { tenantId, userId } = request.user as any
@@ -126,6 +129,7 @@ export async function expenseRoutes(app: FastifyInstance) {
 
   // UPDATE EXPENSE
   app.put('/:id', {
+    schema: { tags: ['Biaya'], summary: 'Update an expense', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -159,6 +163,7 @@ export async function expenseRoutes(app: FastifyInstance) {
 
   // DELETE EXPENSE
   app.delete('/:id', {
+    schema: { tags: ['Biaya'], summary: 'Delete an expense', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any

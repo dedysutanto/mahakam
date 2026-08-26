@@ -5,6 +5,7 @@ import { prisma } from '../../utils/db'
 export async function productRoutes(app: FastifyInstance) {
   // LIST PRODUCTS
   app.get('/', {
+    schema: { tags: ['Produk'], summary: 'List all products', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -34,6 +35,7 @@ export async function productRoutes(app: FastifyInstance) {
 
   // GET SINGLE PRODUCT
   app.get('/:id', {
+    schema: { tags: ['Produk'], summary: 'Get a product by ID', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -47,6 +49,7 @@ export async function productRoutes(app: FastifyInstance) {
 
   // CREATE PRODUCT
   app.post('/', {
+    schema: { tags: ['Produk'], summary: 'Create a new product', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('produk')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
@@ -70,6 +73,7 @@ export async function productRoutes(app: FastifyInstance) {
 
   // UPDATE PRODUCT
   app.put('/:id', {
+    schema: { tags: ['Produk'], summary: 'Update a product', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('produk')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -88,6 +92,7 @@ export async function productRoutes(app: FastifyInstance) {
 
   // DELETE PRODUCT
   app.delete('/:id', {
+    schema: { tags: ['Produk'], summary: 'Delete a product', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('produk')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any

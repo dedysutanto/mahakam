@@ -7,6 +7,7 @@ import { resolveTaxRate } from '../../utils/tax'
 export async function purchaseRoutes(app: FastifyInstance) {
   // LIST PURCHASES
   app.get('/', {
+    schema: { tags: ['Pembelian'], summary: 'List all purchases', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pembelian')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -38,6 +39,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
 
   // GET SINGLE PURCHASE
   app.get('/:id', {
+    schema: { tags: ['Pembelian'], summary: 'Get a purchase by ID', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pembelian')],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -54,6 +56,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
 
   // CREATE PURCHASE
   app.post('/', {
+    schema: { tags: ['Pembelian'], summary: 'Create a new purchase', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pembelian')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
@@ -116,6 +119,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
 
   // UPDATE PURCHASE (draft only)
   app.put('/:id', {
+    schema: { tags: ['Pembelian'], summary: 'Update a purchase (draft only)', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pembelian')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -179,6 +183,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
 
   // UPDATE STATUS
   app.put('/:id/status', {
+    schema: { tags: ['Pembelian'], summary: 'Update purchase status', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pembelian')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -240,6 +245,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
 
   // DELETE PURCHASE
   app.delete('/:id', {
+    schema: { tags: ['Pembelian'], summary: 'Delete a purchase', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pembelian')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any

@@ -9,6 +9,7 @@ function formatCurrency(amount: number | string): string {
 export async function reportRoutes(app: FastifyInstance) {
   // LABA RUGI (INCOME STATEMENT)
   app.get('/laba-rugi', {
+    schema: { tags: ['Pelaporan'], summary: 'Get income statement (laba rugi)', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -79,6 +80,7 @@ export async function reportRoutes(app: FastifyInstance) {
 
   // NERACA (BALANCE SHEET)
   app.get('/neraca', {
+    schema: { tags: ['Pelaporan'], summary: 'Get balance sheet (neraca)', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -140,6 +142,7 @@ export async function reportRoutes(app: FastifyInstance) {
 
   // ARUS KAS (CASH FLOW)
   app.get('/arus-kas', {
+    schema: { tags: ['Pelaporan'], summary: 'Get cash flow statement (arus kas)', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -196,6 +199,7 @@ export async function reportRoutes(app: FastifyInstance) {
 
   // LAPORAN PENGELUARAN
   app.get('/pengeluaran', {
+    schema: { tags: ['Pelaporan'], summary: 'Get expense report (pengeluaran)', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -232,6 +236,7 @@ export async function reportRoutes(app: FastifyInstance) {
 
   // REPI HUTANG PIUTANG (AGING)
   app.get('/piutang-hutang', {
+    schema: { tags: ['Pelaporan'], summary: 'Get receivables and payables aging report', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any

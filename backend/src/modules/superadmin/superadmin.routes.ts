@@ -9,10 +9,11 @@ async function assertSuperAdmin(request: any) {
 }
 
 export async function superAdminRoutes(app: FastifyInstance) {
-  const guard = { preValidation: [authHook(app)] }
-
   // LIST COMPANIES
-  app.get('/tenants', guard, async (request: any) => {
+  app.get('/tenants', {
+    schema: { tags: ['Super Admin'], summary: 'List all companies', security: [{ BearerAuth: [] }] },
+    preValidation: [authHook(app)],
+  }, async (request: any) => {
     await assertSuperAdmin(request)
 
     const tenants = await prisma.tenant.findMany({
@@ -36,7 +37,10 @@ export async function superAdminRoutes(app: FastifyInstance) {
   })
 
   // CREATE COMPANY + ASSIGN ADMIN
-  app.post('/tenants', guard, async (request: any, reply: any) => {
+  app.post('/tenants', {
+    schema: { tags: ['Super Admin'], summary: 'Create a new company', security: [{ BearerAuth: [] }] },
+    preValidation: [authHook(app)],
+  }, async (request: any, reply: any) => {
     await assertSuperAdmin(request)
     const { name, adminMode = 'new', adminEmail, adminPassword, adminFullName } = request.body as any
 
@@ -103,7 +107,10 @@ export async function superAdminRoutes(app: FastifyInstance) {
   })
 
   // EDIT COMPANY — rename and/or (re)assign admin
-  app.put('/tenants/:id', guard, async (request: any, reply: any) => {
+  app.put('/tenants/:id', {
+    schema: { tags: ['Super Admin'], summary: 'Update a company', security: [{ BearerAuth: [] }] },
+    preValidation: [authHook(app)],
+  }, async (request: any, reply: any) => {
     await assertSuperAdmin(request)
     const { id } = request.params as any
     const { name, adminMode = 'new', adminEmail, adminPassword, adminFullName } = request.body as any
@@ -159,7 +166,10 @@ export async function superAdminRoutes(app: FastifyInstance) {
   })
 
   // TOGGLE COMPANY ACTIVE
-  app.put('/tenants/:id/status', guard, async (request: any) => {
+  app.put('/tenants/:id/status', {
+    schema: { tags: ['Super Admin'], summary: 'Toggle company active status', security: [{ BearerAuth: [] }] },
+    preValidation: [authHook(app)],
+  }, async (request: any) => {
     await assertSuperAdmin(request)
     const { id } = request.params as any
     const { isActive } = request.body as any
@@ -172,7 +182,10 @@ export async function superAdminRoutes(app: FastifyInstance) {
   })
 
   // PROMOTE AN EXISTING USER AS SUPER ADMIN
-  app.post('/promote', guard, async (request: any, reply: any) => {
+  app.post('/promote', {
+    schema: { tags: ['Super Admin'], summary: 'Promote user to super admin', security: [{ BearerAuth: [] }] },
+    preValidation: [authHook(app)],
+  }, async (request: any, reply: any) => {
     await assertSuperAdmin(request)
     const { email } = request.body as any
 

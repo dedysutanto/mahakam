@@ -8,6 +8,13 @@ import { generateInvoicePdf, generateRecapPdf } from '../../utils/pdf'
 export async function invoiceRoutes(app: FastifyInstance) {
   // LIST INVOICES
   app.get('/', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'List invoices',
+      description: 'List all invoices for the authenticated tenant. Supports pagination and filtering by status, customer, date range.',
+      security: [{ BearerAuth: [] }],
+      querystring: { type: 'object', properties: { page: { type: 'string' }, limit: { type: 'string' }, status: { type: 'string' }, customerId: { type: 'string' }, dateFrom: { type: 'string' }, dateTo: { type: 'string' } } },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -41,6 +48,13 @@ export async function invoiceRoutes(app: FastifyInstance) {
 
   // GET SINGLE INVOICE
   app.get('/:id', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Get invoice by ID',
+      description: 'Returns a single invoice with items, payments, and customer data.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -58,6 +72,45 @@ export async function invoiceRoutes(app: FastifyInstance) {
 
   // CREATE INVOICE
   app.post('/', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Create invoice',
+      description: 'Create a new invoice with line items. Auto-generates invoice number from settings pattern.',
+      security: [{ BearerAuth: [] }],
+      body: {
+        type: 'object',
+        required: ['customerId', 'items', 'dueDate'],
+        properties: {
+          customerId: { type: 'string' },
+          customerName: { type: 'string' },
+          customerEmail: { type: 'string' },
+          customerAddress: { type: 'string' },
+          customerPhone: { type: 'string' },
+          issueDate: { type: 'string' },
+          dueDate: { type: 'string' },
+          invoiceNumber: { type: 'string', description: 'Custom invoice number (optional, auto-generated if omitted)' },
+          taxId: { type: 'string' },
+          taxRate: { type: 'number' },
+          notes: { type: 'string' },
+          terms: { type: 'string' },
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['description', 'quantity', 'unitPrice'],
+              properties: {
+                productId: { type: 'string' },
+                description: { type: 'string' },
+                quantity: { type: 'number' },
+                unitPrice: { type: 'number' },
+                discount: { type: 'number' },
+                taxRate: { type: 'number' },
+              },
+            },
+          },
+        },
+      },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any, reply: any) => {
     const { tenantId, userId } = request.user as any
@@ -149,6 +202,13 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // UPDATE INVOICE (draft only)
   app.put('/:id', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Update invoice (draft only)',
+      description: 'Update an existing invoice. Only draft invoices can be modified.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -239,6 +299,14 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // UPDATE STATUS
   app.put('/:id/status', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Update invoice status',
+      description: 'Change invoice status. Only draft→sent is allowed manually. Partial/paid status is derived from payments.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+      body: { type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['sent'] } } },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -271,6 +339,23 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // ADD PAYMENT
   app.post('/:id/payments', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Record payment',
+      description: 'Record a payment against an invoice. Automatically updates invoice status (partial/paid).',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+      body: {
+        type: 'object',
+        required: ['amount', 'method'],
+        properties: {
+          amount: { type: 'number', description: 'Payment amount' },
+          method: { type: 'string', description: 'Payment method (e.g. cash, transfer, card)' },
+          reference: { type: 'string', description: 'Payment reference number' },
+          notes: { type: 'string' },
+        },
+      },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -341,6 +426,13 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // DELETE INVOICE
   app.delete('/:id', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Delete invoice',
+      description: 'Delete an invoice. Staff cannot delete paid/overdue invoices.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -361,6 +453,13 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // DOWNLOAD INVOICE PDF
   app.get('/:id/pdf', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Download invoice PDF',
+      description: 'Generate and download the invoice as a PDF file. Includes company info, bank details, items, totals, notes/terms.',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -375,6 +474,19 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
   // RECAP PDF for selected invoices (must all belong to one client)
   app.post('/recap', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Generate recap billing statement PDF',
+      description: 'Generate a recap billing statement PDF for selected invoices. All invoices must belong to the same customer.',
+      security: [{ BearerAuth: [] }],
+      body: {
+        type: 'object',
+        required: ['ids'],
+        properties: {
+          ids: { type: 'array', items: { type: 'string' }, description: 'Array of invoice IDs' },
+        },
+      },
+    },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any, reply: any) => {
     const { ids } = request.body as any

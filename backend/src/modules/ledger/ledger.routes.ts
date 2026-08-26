@@ -5,6 +5,7 @@ import { prisma } from '../../utils/db'
 export async function ledgerRoutes(app: FastifyInstance) {
   // LIST LEDGERS
   app.get('/', {
+    schema: { tags: ['Buku Besar'], summary: 'List all ledger accounts', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('buku-besar')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -29,6 +30,7 @@ export async function ledgerRoutes(app: FastifyInstance) {
 
   // CREATE LEDGER
   app.post('/', {
+    schema: { tags: ['Buku Besar'], summary: 'Create a new ledger account', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('buku-besar')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
@@ -49,6 +51,7 @@ export async function ledgerRoutes(app: FastifyInstance) {
 
   // UPDATE LEDGER
   app.put('/:id', {
+    schema: { tags: ['Buku Besar'], summary: 'Update a ledger account', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('buku-besar')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -68,6 +71,7 @@ export async function ledgerRoutes(app: FastifyInstance) {
 
   // GET JOURNAL ENTRIES
   app.get('/:id/journals', {
+    schema: { tags: ['Buku Besar'], summary: 'Get journal entries for a ledger', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('buku-besar')],
   }, async (request: any) => {
     const { id } = request.params as any
@@ -105,6 +109,7 @@ export async function ledgerRoutes(app: FastifyInstance) {
 
   // GET BALANCE FOR LEDGER
   app.get('/:id/balance', {
+    schema: { tags: ['Buku Besar'], summary: 'Get balance for a ledger account', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('buku-besar')],
   }, async (request: any) => {
     const { id } = request.params as any

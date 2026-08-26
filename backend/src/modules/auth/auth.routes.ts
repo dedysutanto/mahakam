@@ -155,6 +155,13 @@ export async function authRoutes(app: FastifyInstance) {
 
   // GET CURRENT USER
   app.get('/me', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Get current user profile',
+      description: 'Returns the authenticated user profile including tenant info and scopes. Works with both JWT and API key auth.',
+      security: [{ BearerAuth: [] }],
+      response: { 200: { type: 'object', properties: { id: { type: 'string' }, email: { type: 'string' }, fullName: { type: 'string' }, phone: { type: 'string' }, isSuperAdmin: { type: 'boolean' }, scopes: { type: 'array', items: { type: 'string' } }, role: { type: 'string' }, tenant: { type: ['object', 'null'], properties: { id: { type: 'string' }, name: { type: 'string' } } } } } },
+    },
     preValidation: [authHook(app)],
   }, async (request, reply) => {
     const { userId, tenantId, role } = request.user as any
@@ -187,6 +194,14 @@ export async function authRoutes(app: FastifyInstance) {
 
   // UPDATE OWN PROFILE (name, phone)
   app.put('/profile', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Update own profile',
+      description: 'Update the authenticated user full name and phone number.',
+      security: [{ BearerAuth: [] }],
+      body: { type: 'object', required: ['fullName'], properties: { fullName: { type: 'string', minLength: 2 }, phone: { type: 'string' } } },
+      response: { 200: { type: 'object', properties: { message: { type: 'string' } } } },
+    },
     preValidation: [authHook(app)],
   }, async (request: any) => {
     const { userId } = request.user as any
@@ -204,6 +219,14 @@ export async function authRoutes(app: FastifyInstance) {
 
   // CHANGE OWN PASSWORD
   app.put('/password', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Change own password',
+      description: 'Change the authenticated user password. Requires current password.',
+      security: [{ BearerAuth: [] }],
+      body: { type: 'object', required: ['currentPassword', 'newPassword'], properties: { currentPassword: { type: 'string' }, newPassword: { type: 'string', minLength: 6 } } },
+      response: { 200: { type: 'object', properties: { message: { type: 'string' } } } },
+    },
     preValidation: [authHook(app)],
   }, async (request: any) => {
     const { userId } = request.user as any
@@ -228,6 +251,13 @@ export async function authRoutes(app: FastifyInstance) {
 
   // GET API KEY INFO (works with both JWT and API key auth)
   app.get('/api-key/info', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Get auth info (tenant, scopes)',
+      description: 'Returns tenant ID, tenant name, role, and scopes for the authenticated request. Works with both JWT and API key auth. Use this to discover your tenantId when using API keys.',
+      security: [{ BearerAuth: [] }],
+      response: { 200: { type: 'object', properties: { authType: { type: 'string', enum: ['jwt', 'api-key'] }, tenantId: { type: 'string' }, tenantName: { type: ['string', 'null'] }, role: { type: 'string' }, scopes: { type: 'array', items: { type: 'string' } } } } },
+    },
     preValidation: [authHook(app)],
   }, async (request: any) => {
     const { userId, tenantId, role, scopes, email } = request.user as any

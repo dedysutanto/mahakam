@@ -5,6 +5,7 @@ import { prisma } from '../../utils/db'
 export async function taxRoutes(app: FastifyInstance) {
   // LIST TAXES
   app.get('/', {
+    schema: { tags: ['Pajak'], summary: 'List all tax rates', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
@@ -19,6 +20,7 @@ export async function taxRoutes(app: FastifyInstance) {
 
   // CREATE TAX
   app.post('/', {
+    schema: { tags: ['Pajak'], summary: 'Create a new tax rate', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pajak')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
@@ -42,6 +44,7 @@ export async function taxRoutes(app: FastifyInstance) {
 
   // UPDATE TAX
   app.put('/:id', {
+    schema: { tags: ['Pajak'], summary: 'Update a tax rate', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pajak')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
@@ -71,6 +74,7 @@ export async function taxRoutes(app: FastifyInstance) {
 
   // DELETE TAX
   app.delete('/:id', {
+    schema: { tags: ['Pajak'], summary: 'Delete a tax rate', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pajak')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any

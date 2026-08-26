@@ -21,7 +21,7 @@ import { superAdminRoutes } from './modules/superadmin/superadmin.routes'
 import { taxRoutes } from './modules/tax/tax.routes'
 import { join } from 'path'
 
-const APP_VERSION = '1.0.0'
+const APP_VERSION = '1.3.0'
 
 export async function createApp() {
   const app = Fastify({
@@ -59,10 +59,20 @@ export async function createApp() {
       openapi: {
         info: {
           title: 'Mahakam - Sistem Keuangan API',
-          description: 'Mahakam — Sistem Keuangan: Buku Besar, Faktur, Pengeluaran, Pembelian, Produk & Laporan',
+          description: 'Mahakam — Sistem Keuangan: Buku Besar, Faktur, Pengeluaran, Pembelian, Produk & Laporan. Supports JWT Bearer token and API key (`Bearer mk_live_...`) authentication.',
           version: APP_VERSION,
         },
         servers: [{ url: 'http://localhost:3000' }],
+        components: {
+          securitySchemes: {
+            BearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              description: 'JWT token or API key (mk_live_...)',
+            },
+          },
+        },
+        security: [{ BearerAuth: [] }],
       },
     })
     await app.register(swaggerUi, {
