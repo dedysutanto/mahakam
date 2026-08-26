@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency } from '../lib/utils'
-import { ArrowLeft, Plus, Search, Receipt, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Search, Receipt, Trash2, Pencil } from 'lucide-react'
 
 interface Expense {
   id: string
@@ -14,6 +14,9 @@ interface Expense {
   vendorName: string
   status: string
   ledger: { code: string; name: string }
+  ledgerId?: string
+  vendorId?: string | null
+  notes?: string | null
 }
 
 export default function Expenses() {
@@ -24,7 +27,7 @@ export default function Expenses() {
   const [showForm, setShowForm] = useState(false)
   useFormHistory(showForm, () => setShowForm(false))
   const [search, setSearch] = useState('')
-  const [formData, setFormData] = useState({
+  const emptyForm = () => ({
     ledgerId: '',
     vendorId: '',
     description: '',
@@ -33,6 +36,8 @@ export default function Expenses() {
     category: '',
     notes: '',
   })
+  const [editId, setEditId] = useState<string | null>(null)
+  const [formData, setFormData] = useState(emptyForm)
 
   const NEW_VENDOR = '__new_vendor__'
   const emptyNewVendor = { name: '', email: '', phone: '' }
@@ -91,11 +96,25 @@ export default function Expenses() {
     }
   }
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openEdit = (exp: Expense) => {
+    setEditId(exp.id)
+    setFormData({
+      ledgerId: exp.ledgerId || '',
+      vendorId: exp.vendorId || '',
+      description: exp.description,
+      amount: String(Number(exp.amount)),
+      date: new Date(exp.date).toISOString().split('T')[0],
+      category: exp.category || '',
+      notes: exp.notes || '',
+    })
+    setShowForm(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await fetch('/api/expenses/', {
-        method: 'POST',
+      const res = await fetch(editId ? `/api/expenses/${editId}` : '/api/expenses/', {
+        method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -103,16 +122,13 @@ export default function Expenses() {
           vendorName: null,
         }),
       })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.message || 'Gagal menyimpan pengeluaran')
+      }
       setShowForm(false)
-      setFormData({
-        ledgerId: '',
-        vendorId: '',
-        description: '',
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-        category: '',
-        notes: '',
-      })
+      setEditId(null)
+      setFormData(emptyForm())
       fetchData()
     } catch (err: any) {
       alert(err.message)
@@ -151,7 +167,7 @@ export default function Expenses() {
             <h1 className="text-xl font-bold text-foreground">Pengeluaran</h1>
             <p className="text-sm text-muted-foreground">Kelola pengeluaran perusahaan</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn btn-primary">
+          <button onClick={() => { setEditId(null); setFormData(emptyForm()); setShowForm(true) }} className="btn btn-primary">
             <Plus className="w-4 h-4" />
             Tambah Pengeluaran
           </button>
@@ -171,18 +187,18 @@ export default function Expenses() {
         {showForm && (
           <button
             type="button"
-            onClick={() => setShowForm(false)}
+            onClick={() => { setEditId(null); setShowForm(false) }}
             className="btn btn-secondary btn-sm flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4 mr-1" /> Kembali
           </button>
         )}
         {showForm && (
-          <h2 className="text-xl font-bold text-foreground">Tambah Pengeluaran</h2>
+          <h2 className="text-xl font-bold text-foreground">{editId ? 'Edit Pengeluaran' : 'Tambah Pengeluaran'}</h2>
         )}
         {showForm && (
           <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Akun Beban</label>
                 <select
@@ -300,7 +316,7 @@ export default function Expenses() {
               )}
 
               <div className="md:col-span-3 flex justify-end gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => { setEditId(null); setShowForm(false) }}>
                   Batal
                 </button>
                 <button type="submit" className="btn btn-primary">
@@ -360,12 +376,22 @@ export default function Expenses() {
                     <td className="px-5 py-3 text-sm text-muted-foreground">{new Date(exp.date).toLocaleDateString('id-ID')}</td>
                     <td className="px-5 py-3 text-sm text-right font-semibold text-destructive">{formatCurrency(exp.amount)}</td>
                     <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(exp.id)}
-                        className="p-1 text-muted-foreground/70 hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEdit(exp)}
+                          title="Edit"
+                          className="p-1 text-muted-foreground hover:text-primary"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(exp.id)}
+                          title="Hapus"
+                          className="p-1 text-muted-foreground/70 hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -127,7 +127,7 @@ export async function expenseRoutes(app: FastifyInstance) {
     reply.code(201).send(expense)
   })
 
-  // UPDATE EXPENSE
+  // UPDATE EXPENSE — keeps the auto-posted journal entry in sync (V27)
   app.put('/:id', {
     schema: { tags: ['Biaya'], summary: 'Update an expense', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
@@ -152,16 +152,54 @@ export async function expenseRoutes(app: FastifyInstance) {
     }
     if (allowed.date) allowed.date = new Date(allowed.date)
 
-    const expense = await prisma.expense.update({
-      where: { id },
-      data: allowed,
-      include: { ledger: true },
+    const expense = await prisma.$transaction(async (tx: any) => {
+      const updated = await tx.expense.update({
+        where: { id },
+        data: allowed,
+        include: { ledger: true },
+      })
+
+      // Rebuild the journal entry lines from the FINAL stored row so partial
+      // API updates stay correct even when the body omits fields.
+      const je = await tx.journalEntry.findFirst({
+        where: { tenantId, referenceType: 'expense', referenceId: id },
+      })
+      const cashLedger = await tx.ledger.findFirst({ where: { tenantId, type: 'asset', code: { contains: '1-1' } } })
+      const lines = [
+        { ledgerId: updated.ledgerId, debit: Number(updated.amount), description: updated.description },
+        ...(cashLedger ? [{ ledgerId: cashLedger.id, credit: Number(updated.amount), description: `Pembayaran ${updated.expenseNumber}` }] : []),
+      ].filter((l: any) => l.ledgerId)
+
+      if (je) {
+        await tx.journalLine.deleteMany({ where: { entryId: je.id } })
+        await tx.journalLine.createMany({ data: lines.map((l: any) => ({ ...l, entryId: je.id })) })
+        await tx.journalEntry.update({
+          where: { id: je.id },
+          data: { date: updated.date, description: `Pengeluaran: ${updated.description}` },
+        })
+      } else {
+        // Legacy row without a journal entry — post one now
+        await tx.journalEntry.create({
+          data: {
+            tenantId,
+            journalNumber: `JE-${updated.expenseNumber}`,
+            date: updated.date,
+            description: `Pengeluaran: ${updated.description}`,
+            referenceType: 'expense',
+            referenceId: updated.id,
+            postedBy: existing.approvedBy || 'system',
+            lines: { create: lines },
+          },
+        })
+      }
+
+      return updated
     })
 
     reply.send(expense)
   })
 
-  // DELETE EXPENSE
+  // DELETE EXPENSE — removes its auto-posted journal entry too (V27)
   app.delete('/:id', {
     schema: { tags: ['Biaya'], summary: 'Delete an expense', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
@@ -172,7 +210,11 @@ export async function expenseRoutes(app: FastifyInstance) {
     const existing = await prisma.expense.findFirst({ where: { id, tenantId } })
     if (!existing) throw new Error('Pengeluaran tidak ditemukan')
 
-    await prisma.expense.delete({ where: { id } })
+    await prisma.$transaction([
+      prisma.journalEntry.deleteMany({ where: { tenantId, referenceType: 'expense', referenceId: id } }),
+      prisma.expense.delete({ where: { id } }),
+    ])
+
     reply.send({ message: 'Pengeluaran berhasil dihapus' })
   })
 }
