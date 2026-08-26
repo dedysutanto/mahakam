@@ -116,7 +116,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
       prisma.invoice.count({ where: { tenantId } }),
       prisma.invoice.count({ where: { tenantId, status: { not: 'paid' } } }),
-      prisma.customer.count({ where: { tenantId } }),
+      prisma.customer.count({ where: { tenantId, type: 'customer' } }),
 
       prisma.invoice.findMany({
         where: { tenantId },

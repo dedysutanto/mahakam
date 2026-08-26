@@ -72,6 +72,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V25: Product unit dropdown sourced from `product_units` tenant setting (JSON string array; built-in defaults when unset/invalid/empty; stored unit appended when editing legacy rows). `PUT /api/tenants/settings` requires `pengaturan` scope — staff need explicit scope, owner/admin implicit, API keys no bypass.
 - V26: Detail/create/edit overlays push a browser history entry (`useFormHistory`); device/browser back closes the overlay to the module's list; programmatic close consumes the marker without leaving the page.
 - V27: Expense PUT/DELETE keep the auto-posted journal entry in sync — PUT rebuilds JE lines/date/description from the final stored row (or posts a fresh JE for legacy rows without one); DELETE removes the linked JE in the same transaction. No orphaned or stale entries in Buku Besar.
+- V28: Client-facing stats count `type='customer'` contacts only; vendors excluded.
 
 ## §T — tasks
 
@@ -120,6 +121,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T41 | x | expense edit UI (Pencil + edit form) and accounting-safe PUT/DELETE with JE sync | V27 |
 | T42 | x | inline "Produk Baru" panel gains Satuan dropdown from managed unit list (Faktur); full flow ported to Penawaran (was catalog-pick only) | V25 |
 | T43 | x | labeled fields on all five inline creation panels (Produk Baru ×2, Pelanggan Baru, Vendor Baru ×2); Deskripsi captured on inline product creation | V25 |
+| T44 | x | dashboard Total Pelanggan counts customers only (excludes vendors) | V28,B14 |
 
 ## §B — bugs
 
@@ -138,3 +140,4 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B11 | 2026-08-26 | Invoice/quotation Detail (and Edit-from-view) showed "Tanpa Pajak" regardless of real PPN — mappers hardcoded `taxId: '__none__'` | Mappers resolve: stored taxId → rate match → `__none__`/'' fallback |
 | B12 | 2026-08-26 | Browser back while in Detail/form exited the whole module to the previous real history entry (often Buku Besar) — overlays were state-only with no history entries | `useFormHistory`: marker pushed on open; popstate closes overlay to list (T40,V26) |
 | B13 | 2026-08-26 | Expense PUT updated only the row (JE went stale) and DELETE orphaned the posted journal entry — Buku Besar silently desynced | PUT rebuilds linked JE lines/date/description in transaction; DELETE removes linked JE too; Edit button added to UI (T41,V27) |
+| B14 | 2026-08-26 | Dashboard "Total Pelanggan" counted vendors too (dual-purpose customers table had no type filter) | Count filtered to `type: 'customer'` (T44,V28) |
