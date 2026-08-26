@@ -69,6 +69,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V22: Rate limiting via `@fastify/rate-limit`: global 100 req/min per IP; login endpoint 5 req/min per IP (brute-force protection).
 - V23: Item tables (PDF + frontend view mode): Diskon column rendered only when ≥1 line has discount > 0; product unit rendered after quantity (`10 pcs`); totals Diskon row only when discount > 0.
 - V24: `/uploads/*` served by backend static root; nginx proxies `location ^~ /uploads/` → api (prefix match must beat regex asset block); `uploads` named volume persists logos; logos dir auto-created at entrypoint and upload route.
+- V25: Product unit dropdown sourced from `product_units` tenant setting (JSON string array; built-in defaults when unset/invalid/empty; stored unit appended when editing legacy rows). `PUT /api/tenants/settings` requires `pengaturan` scope — staff need explicit scope, owner/admin implicit, API keys no bypass.
 
 ## §T — tasks
 
@@ -112,6 +113,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T36 | x | settings: remove hardcoded bank placeholders, fields kept for PDF | — |
 | T37 | x | PDF: hide Diskon column when no item discounted; Total column expands | V23 |
 | T38 | x | unit after quantity: backend includes load product; PDF + views render it; mappers carry flat unit | V23 |
+| T39 | x | Settings "Satuan Produk" chips editor → `product_units` setting; Products strict dropdown from list; clickable product rows | V25 |
 
 ## §B — bugs
 

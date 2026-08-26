@@ -19,8 +19,10 @@ export default function Products() {
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const DEFAULT_UNITS = ['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan']
   const emptyForm = { name: '', sku: '', unit: 'pcs', description: '', price: 0 }
   const [formData, setFormData] = useState(emptyForm)
+  const [unitOptions, setUnitOptions] = useState<string[]>(DEFAULT_UNITS)
 
   const fetchData = () => {
     fetch('/api/products/')
@@ -35,7 +37,18 @@ export default function Products() {
       .catch(() => setLoading(false))
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    fetchData()
+    fetch('/api/tenants/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        try {
+          const parsed = JSON.parse(data.product_units || '')
+          if (Array.isArray(parsed) && parsed.length > 0) setUnitOptions(parsed.map(String))
+        } catch {}
+      })
+      .catch(() => {})
+  }, [])
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -156,7 +169,7 @@ export default function Products() {
                   value={formData.unit}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 >
-                  {['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan'].map((u) => (
+                  {(unitOptions.includes(formData.unit) || !formData.unit ? unitOptions : [...unitOptions, formData.unit]).map((u) => (
                     <option key={u} value={u}>{u}</option>
                   ))}
                 </select>
@@ -218,7 +231,7 @@ export default function Products() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-muted">
+                  <tr key={p.id} className="hover:bg-muted cursor-pointer" onClick={() => openEdit(p)}>
                     <td className="px-5 py-3 text-sm font-medium text-foreground">{p.name}</td>
                     <td className="px-5 py-3 text-sm text-muted-foreground font-mono">{p.sku || '-'}</td>
                     <td className="px-5 py-3 text-sm text-muted-foreground">{p.unit}</td>
@@ -228,7 +241,7 @@ export default function Products() {
                         <button onClick={() => openEdit(p)} title="Edit" className="p-1 text-muted-foreground hover:text-primary">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(p.id)} title="Hapus" className="p-1 text-muted-foreground/70 hover:text-destructive">
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }} title="Hapus" className="p-1 text-muted-foreground/70 hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

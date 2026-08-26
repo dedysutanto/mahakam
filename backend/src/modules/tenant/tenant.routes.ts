@@ -1,4 +1,4 @@
-import { authHook, validateTenantHook } from '../../middleware/auth'
+import { authHook, validateTenantHook, requireScope } from '../../middleware/auth'
 import bcrypt from 'bcryptjs'
 import { FastifyInstance } from 'fastify'
 import { prisma } from '../../utils/db'
@@ -289,7 +289,7 @@ export async function tenantRoutes(app: FastifyInstance) {
       security: [{ BearerAuth: [] }],
       body: { type: 'object', additionalProperties: { type: 'string' } },
     },
-    preValidation: [authHook(app)],
+    preValidation: [authHook(app), requireScope('pengaturan')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
     const entries = request.body as Record<string, string>

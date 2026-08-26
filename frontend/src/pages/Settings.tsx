@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import { Settings, Upload, Building2, Hash, FileText, MapPin } from 'lucide-react'
 import { PROVINCES_ID, DEFAULT_COUNTRY } from '../lib/regions'
 import { useAuth } from '../lib/AuthContext'
-import { UserPlus, Power, Pencil, Trash2, Key } from 'lucide-react'
+import { UserPlus, Power, Pencil, Trash2, Key, Package } from 'lucide-react'
 
 const KINDS = [
   { key: 'invoice', label: 'Faktur', defaultPrefix: 'INV' },
@@ -57,6 +57,11 @@ export default function SettingsPage() {
   // PDF design
   const [pdfDesign, setPdfDesign] = useState('professional')
   const [pdfDirty, setPdfDirty] = useState(false)
+
+  // Product units
+  const DEFAULT_UNITS = ['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan']
+  const [unitList, setUnitList] = useState<string[]>(DEFAULT_UNITS)
+  const [newUnit, setNewUnit] = useState('')
 
   const [tenantId, setTenantId] = useState<string | null>(null)
   const { user } = useAuth()
@@ -301,9 +306,50 @@ export default function SettingsPage() {
         setCompanyPhone(data.company_phone || '')
         setCompanyEmail(data.company_email || '')
         setPdfDesign(data.invoice_pdf_design || 'professional')
+        try {
+          const parsedUnits = JSON.parse(data.product_units || '')
+          if (Array.isArray(parsedUnits) && parsedUnits.length > 0) setUnitList(parsedUnits.map(String))
+        } catch {}
       })
       .catch(() => {})
-  }, [])
+   }, [])
+
+  const addUnit = () => {
+    const u = newUnit.trim()
+    if (!u) return
+    if (u.length > 20) { setMsg('Satuan maksimal 20 karakter'); return }
+    if (unitList.includes(u)) { setMsg('Satuan sudah ada dalam daftar'); return }
+    setUnitList([...unitList, u])
+    setNewUnit('')
+    setMsg('')
+  }
+
+  const removeUnit = (u: string) => {
+    if (unitList.length <= 1) { setMsg('Minimal satu satuan harus tersisa'); return }
+    setUnitList(unitList.filter((x) => x !== u))
+    setMsg('')
+  }
+
+  const handleUnitsSave = async () => {
+    setSaving(true)
+    setMsg('')
+    try {
+      const res = await fetch('/api/tenants/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_units: JSON.stringify(unitList) }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.message || 'Gagal menyimpan')
+      }
+      setMsg('Daftar satuan berhasil disimpan!')
+    } catch (err: any) {
+      setMsg(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1098,6 +1144,44 @@ export default function SettingsPage() {
               className="btn btn-primary"
             >
               {saving ? 'Menyimpan...' : 'Simpan Format'}
+            </button>
+          </div>
+        </div>
+
+        {/* Product Units */}
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="w-5 h-5 text-muted-foreground" />
+            <h2 className="font-semibold text-foreground">Satuan Produk</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Daftar satuan yang tersedia pada dropdown produk dan tercetak di faktur. Minimal satu satuan.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {unitList.map((u) => (
+              <span key={u} className="inline-flex items-center gap-1 border border-border rounded-full pl-3 pr-1.5 py-1 text-sm bg-muted">
+                {u}
+                <button onClick={() => removeUnit(u)} title={`Hapus ${u}`} className="w-4 h-4 rounded-full text-muted-foreground hover:text-destructive flex items-center justify-center">
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2 max-w-xs">
+            <input
+              type="text"
+              className="input text-sm"
+              value={newUnit}
+              maxLength={20}
+              placeholder="Satuan baru..."
+              onChange={(e) => setNewUnit(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUnit() } }}
+            />
+            <button type="button" onClick={addUnit} className="btn btn-secondary btn-sm">Tambah</button>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button onClick={handleUnitsSave} disabled={saving} className="btn btn-primary">
+              {saving ? 'Menyimpan...' : 'Simpan Satuan'}
             </button>
           </div>
         </div>
