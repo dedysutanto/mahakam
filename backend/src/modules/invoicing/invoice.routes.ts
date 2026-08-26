@@ -32,7 +32,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
         where,
-        include: { items: true, payments: true, customer: true },
+        include: { items: { include: { product: true } }, payments: true, customer: true },
         orderBy: { issueDate: 'desc' },
         skip,
         take,
@@ -62,7 +62,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
 
     const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId },
-      include: { items: true, payments: true, customer: true },
+      include: { items: { include: { product: true } }, payments: true, customer: true },
     })
 
     if (!invoice) throw new Error('Faktur tidak ditemukan')
@@ -193,7 +193,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
         status: 'draft',
         items: { create: invoiceItems },
       },
-      include: { items: true, customer: true },
+      include: { items: { include: { product: true } }, customer: true },
     })
 
     reply.code(201).send(invoice)
@@ -291,7 +291,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
           create: invoiceItems,
         },
       },
-      include: { items: true, customer: true },
+      include: { items: { include: { product: true } }, customer: true },
     })
 
     reply.send(updated)
@@ -331,7 +331,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
     const updated = await prisma.invoice.update({
       where: { id },
       data: { status: 'sent', sentAt: new Date() },
-      include: { items: true, customer: true },
+      include: { items: { include: { product: true } }, customer: true },
     })
 
     reply.send(updated)

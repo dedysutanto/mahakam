@@ -736,13 +736,16 @@ export default function Invoices() {
                 <label className="block text-sm font-medium text-foreground mb-2">Item Faktur</label>
                 {isView ? (
                   <div className="border border-border rounded-lg overflow-hidden">
+                    {(() => {
+                      const hasDiscount = formData.items.some((item: typeof formData.items[number]) => Number(item.discount || 0) > 0)
+                      return (
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border bg-muted">
                           <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Item</th>
                           <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Qty</th>
                           <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Harga</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Diskon</th>
+                          {hasDiscount && <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Diskon</th>}
                           <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Total</th>
                         </tr>
                       </thead>
@@ -750,11 +753,13 @@ export default function Invoices() {
                         {formData.items.map((item, idx) => (
                           <tr key={idx}>
                             <td className="px-3 py-2 text-foreground">{item.description || '-'}</td>
-                            <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)}</td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)} {item.product?.unit}</td>
                             <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(Number(item.unitPrice))}</td>
+                            {hasDiscount && (
                             <td className="px-3 py-2 text-right text-muted-foreground">
                               {Number(item.discount || 0) > 0 ? `${Number(item.discount)}%` : '-'}
                             </td>
+                            )}
                             <td className="px-3 py-2 text-right font-medium text-foreground">
                               {formatCurrency(lineNet(item))}
                             </td>
@@ -762,6 +767,8 @@ export default function Invoices() {
                         ))}
                       </tbody>
                     </table>
+                      )
+                    })()}
                   </div>
                 ) : (
                   <>

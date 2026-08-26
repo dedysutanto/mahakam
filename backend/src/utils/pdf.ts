@@ -86,7 +86,7 @@ type InvoiceFull = NonNullable<Awaited<ReturnType<typeof fetchInvoiceFull>>>
 function fetchInvoiceFull(invoiceId: string, tenantId: string) {
   return prisma.invoice.findFirst({
     where: { id: invoiceId, tenantId },
-    include: { items: true, payments: true, customer: true },
+    include: { items: { include: { product: true } }, payments: true, customer: true },
   })
 }
 
@@ -249,7 +249,7 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
     const textY = rowY + 5
     doc.fillColor(t.text)
     doc.text(item.description || '-', colDesc.x, textY, { width: colDesc.w })
-    doc.text(String(Number(item.quantity)), colQty.x, textY, { width: colQty.w, align: 'right' })
+    doc.text(`${Number(item.quantity)} ${item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
     if (hasAnyDiscount) {
       doc.text(
@@ -385,7 +385,7 @@ export async function generateInvoicePdf(invoiceId: string, tenantId: string): P
 export async function generateQuotationPdf(quotationId: string, tenantId: string): Promise<Buffer> {
   const quotation = await prisma.quotation.findFirst({
     where: { id: quotationId, tenantId },
-    include: { items: true, customer: true },
+    include: { items: { include: { product: true } }, customer: true },
   })
   if (!quotation) throw new Error('Penawaran tidak ditemukan')
 
@@ -545,7 +545,7 @@ export async function generateQuotationPdf(quotationId: string, tenantId: string
     const textY = rowY + 5
     doc.fillColor(t.text)
     doc.text(item.description || '-', colDesc.x, textY, { width: colDesc.w })
-    doc.text(String(Number(item.quantity)), colQty.x, textY, { width: colQty.w, align: 'right' })
+    doc.text(`${Number(item.quantity)} ${item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
     if (hasAnyDiscount) {
       doc.text(
@@ -637,7 +637,7 @@ export async function generateRecapPdf(invoiceIds: string[], tenantId: string): 
 
   const invoices = await prisma.invoice.findMany({
     where: { id: { in: invoiceIds }, tenantId },
-    include: { items: true, payments: true, customer: true },
+    include: { items: { include: { product: true } }, payments: true, customer: true },
     orderBy: { issueDate: 'asc' },
   })
   if (invoices.length !== invoiceIds.length) throw new Error('Beberapa faktur tidak ditemukan')

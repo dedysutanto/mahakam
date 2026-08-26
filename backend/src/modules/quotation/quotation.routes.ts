@@ -37,7 +37,7 @@ export async function quotationRoutes(app: FastifyInstance) {
     const [quotations, total] = await Promise.all([
       prisma.quotation.findMany({
         where,
-        include: { items: true, customer: { select: { id: true, name: true } } },
+        include: { items: { include: { product: true } }, customer: { select: { id: true, name: true } } },
         orderBy: { issueDate: 'desc' },
         skip,
         take,
@@ -61,7 +61,7 @@ export async function quotationRoutes(app: FastifyInstance) {
 
     const quotation = await prisma.quotation.findFirst({
       where: { id, tenantId },
-      include: { items: true, customer: true },
+      include: { items: { include: { product: true } }, customer: true },
     })
     if (!quotation) throw new Error('Penawaran tidak ditemukan')
 
@@ -136,7 +136,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
         terms: terms || null,
         items: { create: quotationItems },
       },
-      include: { items: true },
+      include: { items: { include: { product: true } } },
     })
 
     reply.code(201).send(quotation)
@@ -214,7 +214,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
         terms: terms || null,
         items: { create: quotationItems },
       },
-      include: { items: true },
+      include: { items: { include: { product: true } } },
     })
 
     reply.send(quotation)
@@ -239,7 +239,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
       throw new Error('Status hanya bisa maju: draft → dikirim → diterima/ditolak')
     }
 
-    const updated = await prisma.quotation.update({ where: { id }, data: { status }, include: { items: true } })
+    const updated = await prisma.quotation.update({ where: { id }, data: { status }, include: { items: { include: { product: true } } } })
     reply.send(updated)
   })
 
@@ -253,7 +253,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
     const quotation = await prisma.quotation.findFirst({
       where: { id, tenantId },
-      include: { items: true },
+      include: { items: { include: { product: true } } },
     })
     if (!quotation) throw new Error('Penawaran tidak ditemukan')
     if (quotation.status !== 'accepted') throw new Error('Hanya penawaran berstatus diterima yang bisa dikonversi')
