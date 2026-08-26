@@ -5,6 +5,7 @@ import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import multipart from '@fastify/multipart'
 import fastifyStatic from '@fastify/static'
+import rateLimit from '@fastify/rate-limit'
 import { addAuth } from './middleware/auth'
 import { authRoutes } from './modules/auth/auth.routes'
 import { tenantRoutes } from './modules/tenant/tenant.routes'
@@ -21,7 +22,7 @@ import { superAdminRoutes } from './modules/superadmin/superadmin.routes'
 import { taxRoutes } from './modules/tax/tax.routes'
 import { join } from 'path'
 
-const APP_VERSION = '1.3.10'
+const APP_VERSION = '1.3.11'
 
 export async function createApp() {
   const app = Fastify({
@@ -45,6 +46,12 @@ export async function createApp() {
   })
   addAuth(app)
   await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } }) // 5MB max
+
+  // Rate limiting - global default: 100 req/min
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: '1 minute',
+  })
 
   // Serve uploaded files (logos)
   await app.register(fastifyStatic, {
