@@ -73,7 +73,7 @@ export default function Dashboard() {
   }
 
   const formatChange = (change: number | null, invertColor?: boolean): { text: string; positive: boolean } => {
-    if (change === null) return { text: 'Baru', positive: true }
+    if (change == null) return { text: 'Baru', positive: true }
     const sign = change >= 0 ? '+' : ''
     const isPositive = invertColor ? change <= 0 : change >= 0
     return { text: `${sign}${change}%`, positive: isPositive }
