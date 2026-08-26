@@ -70,6 +70,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V23: Item tables (PDF + frontend view mode): Diskon column rendered only when ≥1 line has discount > 0; product unit rendered after quantity (`10 pcs`); totals Diskon row only when discount > 0.
 - V24: `/uploads/*` served by backend static root; nginx proxies `location ^~ /uploads/` → api (prefix match must beat regex asset block); `uploads` named volume persists logos; logos dir auto-created at entrypoint and upload route.
 - V25: Product unit dropdown sourced from `product_units` tenant setting (JSON string array; built-in defaults when unset/invalid/empty; stored unit appended when editing legacy rows). `PUT /api/tenants/settings` requires `pengaturan` scope — staff need explicit scope, owner/admin implicit, API keys no bypass.
+- V26: Detail/create/edit overlays push a browser history entry (`useFormHistory`); device/browser back closes the overlay to the module's list; programmatic close consumes the marker without leaving the page.
 
 ## §T — tasks
 
@@ -114,6 +115,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T37 | x | PDF: hide Diskon column when no item discounted; Total column expands | V23 |
 | T38 | x | unit after quantity: backend includes load product; PDF + views render it; mappers carry flat unit | V23 |
 | T39 | x | Settings "Satuan Produk" chips editor → `product_units` setting; Products strict dropdown from list; clickable product rows | V25 |
+| T40 | x | useFormHistory hook wired into 9 modules (Faktur, Penawaran, Pembelian, Pengeluaran, Produk, Pelanggan, Pajak, Buku Besar, Laporan) so back closes overlays | V26 |
 
 ## §B — bugs
 
@@ -130,3 +132,4 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B9 | 2026-08-25 | nginx regex `~* \.(png)$` intercepted `/uploads/logos/*.png` → 404 | `location ^~ /uploads/` prefix takes precedence (T35,V24) |
 | B10 | 2026-08-26 | View-mode QTY showed no unit — form mappers dropped nested `product` object so `item.product?.unit` undefined | Mappers carry flat `unit: it.product?.unit || ''`; JSX reads `item.unit` (T38,V23) |
 | B11 | 2026-08-26 | Invoice/quotation Detail (and Edit-from-view) showed "Tanpa Pajak" regardless of real PPN — mappers hardcoded `taxId: '__none__'` | Mappers resolve: stored taxId → rate match → `__none__`/'' fallback |
+| B12 | 2026-08-26 | Browser back while in Detail/form exited the whole module to the previous real history entry (often Buku Besar) — overlays were state-only with no history entries | `useFormHistory`: marker pushed on open; popstate closes overlay to list (T40,V26) |

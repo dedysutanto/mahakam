@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { useAuth } from '../lib/AuthContext'
 import { formatCurrency } from '../lib/utils'
 import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Wallet, Tag, CheckSquare, Square } from 'lucide-react'
@@ -59,6 +60,7 @@ export default function Invoices() {
   // 'view' = read-only page, 'edit' = draft editing, 'create' = new
   const [formMode, setFormMode] = useState<'create' | 'edit' | 'view'>('create')
   const [returnToView, setReturnToView] = useState(false)
+  useFormHistory(showForm, () => { setShowForm(false); setReturnToView(false) })
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null)
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])

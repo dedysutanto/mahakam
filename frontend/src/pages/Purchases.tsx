@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency } from '../lib/utils'
 import { ArrowLeft, Plus, Search, ShoppingCart, Trash2, Eye, Pencil } from 'lucide-react'
 
@@ -41,6 +42,7 @@ export default function Purchases() {
   // 'view' = read-only form, 'edit' = editable form (draft only), 'create' = new
   const [formMode, setFormMode] = useState<'create' | 'edit' | 'view'>('create')
   const [editingId, setEditingId] = useState<string | null>(null)
+  useFormHistory(showForm, () => { setShowForm(false); resetForm() })
   const [search, setSearch] = useState('')
 
   const todayStr = new Date().toISOString().slice(0, 10)

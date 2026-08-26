@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency } from '../lib/utils'
 import { BarChart3, FileText, TrendingUp, ArrowLeft, Printer } from 'lucide-react'
 
@@ -34,6 +35,7 @@ export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<string | null>(null)
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(false)
+  useFormHistory(selectedReport !== null, () => { setSelectedReport(null); setData(null) })
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 

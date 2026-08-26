@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { ArrowLeft, Plus, Search, Users, Pencil, Trash2 } from 'lucide-react'
 import { PROVINCES_ID, DEFAULT_COUNTRY } from '../lib/regions'
 
@@ -20,6 +21,7 @@ export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  useFormHistory(showForm, () => { setShowForm(false); setEditingId(null) })
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [editingId, setEditingId] = useState<string | null>(null)

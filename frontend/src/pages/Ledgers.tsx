@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { Plus, Pencil, Trash2, BookOpen, Search } from 'lucide-react'
 
 interface Ledger {
@@ -25,6 +26,7 @@ export default function Ledgers() {
   const [ledgers, setLedgers] = useState<Ledger[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  useFormHistory(showForm, () => setShowForm(false))
   const [search, setSearch] = useState('')
   const [formData, setFormData] = useState({ code: '', name: '', type: 'asset', parentId: '' })
   const [filterType, setFilterType] = useState<string>('all')

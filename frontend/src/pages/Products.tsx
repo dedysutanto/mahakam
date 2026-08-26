@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { ArrowLeft, Plus, Search, Package, Trash2, Pencil } from 'lucide-react'
 import { formatCurrency } from '../lib/utils'
 
@@ -17,6 +18,7 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  useFormHistory(showForm, () => setShowForm(false))
   const [editId, setEditId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const DEFAULT_UNITS = ['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan']

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { ArrowLeft, Plus, Percent, Trash2, Pencil } from 'lucide-react'
 
 interface Tax {
@@ -14,6 +15,7 @@ export default function Taxes() {
   const [taxes, setTaxes] = useState<Tax[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  useFormHistory(showForm, () => setShowForm(false))
   const [editId, setEditId] = useState<string | null>(null)
   const emptyForm = { name: '', rate: 11, isDefault: false }
   const [formData, setFormData] = useState(emptyForm)

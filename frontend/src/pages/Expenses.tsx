@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency } from '../lib/utils'
 import { ArrowLeft, Plus, Search, Receipt, Trash2 } from 'lucide-react'
 
@@ -21,6 +22,7 @@ export default function Expenses() {
   const [vendors, setVendors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  useFormHistory(showForm, () => setShowForm(false))
   const [search, setSearch] = useState('')
   const [formData, setFormData] = useState({
     ledgerId: '',

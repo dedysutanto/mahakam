@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency } from '../lib/utils'
 import { Plus, Search, FileText, Trash2, Eye, Pencil, Download, ArrowRightCircle, ArrowLeft } from 'lucide-react'
 
@@ -56,6 +57,7 @@ export default function Quotes() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingStatus, setViewingStatus] = useState('')
   const [returnToView, setReturnToView] = useState(false)
+  useFormHistory(showForm, () => { setShowForm(false); setReturnToView(false) })
   const [search, setSearch] = useState('')
   const [converting, setConverting] = useState(false)
 
