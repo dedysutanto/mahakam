@@ -443,7 +443,9 @@ export default function Invoices() {
     invoiceNumber: inv.invoiceNumber || '',
     issueDate: toDateInput(new Date(inv.issueDate)),
     dueDate: toDateInput(new Date(inv.dueDate)),
-    taxId: '__none__',
+    taxId: inv.taxId
+      || taxes.find((t) => Number(t.rate) === Number(inv.taxRate ?? 0))?.id
+      || (Number(inv.taxRate ?? 0) === 0 ? '__none__' : ''),
     items: (inv.items || []).map((it: any) => {
       // prefer stored reference; fall back to catalog name match for legacy rows
       const pid = it.productId || products.find((p: any) => p.name === it.description)?.id || ''

@@ -129,3 +129,4 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B8 | 2026-08-25 | Logo upload ENOENT — `uploads/logos` absent in container volume shadow | mkdir at entrypoint + route mkdirSync (T34,V24) |
 | B9 | 2026-08-25 | nginx regex `~* \.(png)$` intercepted `/uploads/logos/*.png` → 404 | `location ^~ /uploads/` prefix takes precedence (T35,V24) |
 | B10 | 2026-08-26 | View-mode QTY showed no unit — form mappers dropped nested `product` object so `item.product?.unit` undefined | Mappers carry flat `unit: it.product?.unit || ''`; JSX reads `item.unit` (T38,V23) |
+| B11 | 2026-08-26 | Invoice/quotation Detail (and Edit-from-view) showed "Tanpa Pajak" regardless of real PPN — mappers hardcoded `taxId: '__none__'` | Mappers resolve: stored taxId → rate match → `__none__`/'' fallback |

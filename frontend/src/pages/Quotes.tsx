@@ -209,7 +209,9 @@ export default function Quotes() {
     customerId: q.customer?.id || '',
     issueDate: new Date(q.issueDate).toISOString().slice(0, 10),
     validUntil: q.validUntil ? new Date(q.validUntil).toISOString().slice(0, 10) : '',
-    taxId: '__none__',
+    taxId: q.taxId
+      || taxes.find((t) => Number(t.rate) === Number(q.taxRate ?? 0))?.id
+      || (Number(q.taxRate ?? 0) === 0 ? '__none__' : ''),
     discount: Number(q.discount || 0),
     items: (q.items || []).map((it: any) => {
       const pid = it.productId || products.find((p: any) => p.name === it.description)?.id || ''
