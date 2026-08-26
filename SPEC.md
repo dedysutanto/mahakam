@@ -73,6 +73,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V26: Detail/create/edit overlays push a browser history entry (`useFormHistory`); device/browser back closes the overlay to the module's list; programmatic close consumes the marker without leaving the page.
 - V27: Expense PUT/DELETE keep the auto-posted journal entry in sync — PUT rebuilds JE lines/date/description from the final stored row (or posts a fresh JE for legacy rows without one); DELETE removes the linked JE in the same transaction. No orphaned or stale entries in Buku Besar.
 - V28: Client-facing stats count `type='customer'` contacts only; vendors excluded.
+- V29: Rekap wizard includes exactly the invoices matching its active filters (status ∧ periode ∧ search); no separate selection state exists — anything not matching is excluded.
 
 ## §T — tasks
 
@@ -123,6 +124,8 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T43 | x | labeled fields on all five inline creation panels (Produk Baru ×2, Pelanggan Baru, Vendor Baru ×2); Deskripsi captured on inline product creation | V25 |
 | T44 | x | dashboard Total Pelanggan counts customers only (excludes vendors) | V28,B14 |
 | T45 | x | recap table: Klien column dropped, Number column 190pt, wrap-aware row heights, summary shows "N faktur" | B15 |
+| T46 | x | rekap wizard filter-driven: status + periode + search filters define content; checkboxes removed; footer totals from filtered set; button disabled at 0; filters reset on open/client change | V29,B16 |
+| T47 | x | dashboard Faktur Terbaru shows invoice total (not outstanding), conditional "Sisa" hint, full status labels incl. Sebagian/Terlambat with distinct colors | B17 |
 
 ## §B — bugs
 
@@ -143,3 +146,5 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B13 | 2026-08-26 | Expense PUT updated only the row (JE went stale) and DELETE orphaned the posted journal entry — Buku Besar silently desynced | PUT rebuilds linked JE lines/date/description in transaction; DELETE removes linked JE too; Edit button added to UI (T41,V27) |
 | B14 | 2026-08-26 | Dashboard "Total Pelanggan" counted vendors too (dual-purpose customers table had no type filter) | Count filtered to `type: 'customer'` (T44,V28) |
 | B15 | 2026-08-26 | Long invoice numbers (e.g. 018/INVOICE/OSB/VIII/2026) wrapped inside the 80pt recap Number column and overlapped following rows because rows advanced a fixed 16pt | Klien column removed, Number column 190pt, wrap-aware row heights via heightOfString (T45) |
+| B16 | 2026-08-26 | Rekap wizard filters were cosmetic — selection silently contained all statuses regardless of active filter | Wizard redesigned: filtered set IS the rekap content; checkboxes deleted (T46,V29) |
+| B17 | 2026-08-26 | Dashboard Faktur Terbaru displayed outstanding (Rp 0 for paid invoices) as the main figure and labeled partial/overdue invoices "Draft" | Show invoice total + conditional Sisa hint; complete status label/color map (T47) |

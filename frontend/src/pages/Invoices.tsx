@@ -67,7 +67,8 @@ export default function Invoices() {
   const [recapBusy, setRecapBusy] = useState(false)
   const [recapWizard, setRecapWizard] = useState<'client' | 'invoices' | null>(null)
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
-  const [wizardSelectedIds, setWizardSelectedIds] = useState<string[]>([])
+  const [wizardMonth, setWizardMonth] = useState('all')
+  const [wizardSearch, setWizardSearch] = useState('')
   const [wizardBusy, setWizardBusy] = useState(false)
   const [wizardStatusFilter, setWizardStatusFilter] = useState('all')
 
@@ -302,33 +303,49 @@ export default function Invoices() {
     }
   }
 
+  const resetWizardFilters = () => {
+    setWizardStatusFilter('all')
+    setWizardMonth('all')
+    setWizardSearch('')
+  }
+
   const openRecapWizard = () => {
+    resetWizardFilters()
     setRecapWizard('client')
     setSelectedClient(null)
-    setWizardSelectedIds([])
   }
 
   const wizardClientInvoices = invoices.filter(
     (inv) => inv.customerId === selectedClient && inv.status !== 'draft'
   )
 
+  const wizardMonths = Array.from(
+    new Set(wizardClientInvoices.map((inv: any) => String(inv.issueDate).slice(0, 7)))
+  ).sort().reverse()
+
+  const wizardMonthLabel = (key: string) => {
+    const [yy, mm] = key.split('-').map(Number)
+    return new Date(yy, mm - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+  }
+
+  // Filters define rekap content exactly — anything not matching is excluded (V29)
+  const wizardFilteredInvoices = wizardClientInvoices.filter((inv: any) =>
+    (wizardStatusFilter === 'all' || inv.status === wizardStatusFilter)
+    && (wizardMonth === 'all' || String(inv.issueDate).slice(0, 7) === wizardMonth)
+    && (!wizardSearch || inv.invoiceNumber.toLowerCase().includes(wizardSearch.toLowerCase()))
+  )
+
   const wizardSelectClient = (clientId: string) => {
     setSelectedClient(clientId)
-    setWizardSelectedIds(
-      invoices.filter((inv) => inv.customerId === clientId && inv.status !== 'draft').map((i) => i.id)
-    )
+    resetWizardFilters()
     setRecapWizard('invoices')
   }
 
-  const toggleWizardSelect = (id: string) => {
-    setWizardSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-  }
-
   const handleWizardRecap = async () => {
-    if (wizardSelectedIds.length === 0) return
+    if (wizardFilteredInvoices.length === 0) return
     setWizardBusy(true)
     try {
-      await handleRecap(wizardSelectedIds)
+      await handleRecap(wizardFilteredInvoices.map((i: any) => i.id))
       setRecapWizard(null)
     } finally {
       setWizardBusy(false)
@@ -1245,39 +1262,44 @@ export default function Invoices() {
 
               {recapWizard === 'invoices' && (
                 <div className="space-y-3">
-                  <select
-                    className="input w-fit text-sm"
-                    value={wizardStatusFilter}
-                    onChange={(e) => setWizardStatusFilter(e.target.value)}
-                  >
-                    <option value="all">Semua Status</option>
-                    {Object.entries(statusLabels)
-                      .filter(([k]) => k !== 'draft')
-                      .map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <select
+                      className="input text-sm"
+                      value={wizardStatusFilter}
+                      onChange={(e) => setWizardStatusFilter(e.target.value)}
+                    >
+                      <option value="all">Semua Status</option>
+                      {Object.entries(statusLabels)
+                        .filter(([k]) => k !== 'draft')
+                        .map(([k, v]) => (
+                          <option key={k} value={k}>{v}</option>
+                        ))}
+                    </select>
+                    <select
+                      className="input text-sm"
+                      value={wizardMonth}
+                      onChange={(e) => setWizardMonth(e.target.value)}
+                    >
+                      <option value="all">Semua Periode</option>
+                      {wizardMonths.map((m) => (
+                        <option key={m} value={m}>{wizardMonthLabel(m)}</option>
                       ))}
-                  </select>
-                  {wizardClientInvoices
-                    .filter((inv) => wizardStatusFilter === 'all' || inv.status === wizardStatusFilter)
-                    .map((inv) => {
-                    const checked = wizardSelectedIds.includes(inv.id)
+                    </select>
+                    <input
+                      type="text"
+                      className="input text-sm"
+                      placeholder="Cari nomor faktur..."
+                      value={wizardSearch}
+                      onChange={(e) => setWizardSearch(e.target.value)}
+                    />
+                  </div>
+                  {wizardFilteredInvoices.map((inv: any) => {
                     const saldo = Math.max(Number(inv.total) - Number(inv.amountPaid || 0), 0)
                     return (
-                      <label
+                      <div
                         key={inv.id}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer ${
-                          checked ? 'border-primary/40 bg-accent/40' : 'border-border hover:bg-muted'
-                        }`}
+                        className={`flex items-center justify-between px-4 py-3 rounded-lg border border-border ${saldo === 0 ? 'opacity-75' : ''}`}
                       >
-                        <span className="flex-shrink-0">
-                          {checked ? <CheckSquare className="w-5 h-5 text-primary" /> : <Square className="w-5 h-5 text-muted-foreground" />}
-                        </span>
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={checked}
-                          onChange={() => toggleWizardSelect(inv.id)}
-                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-primary">{inv.invoiceNumber}</span>
@@ -1300,9 +1322,12 @@ export default function Invoices() {
                           <div className="text-xs text-muted-foreground">Sisa</div>
                           <div className="text-sm font-medium text-foreground">{formatCurrency(saldo)}</div>
                         </div>
-                      </label>
+                      </div>
                     )
                   })}
+                  {wizardFilteredInvoices.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-8">Tidak ada faktur sesuai filter</p>
+                  )}
                 </div>
               )}
             </div>
@@ -1311,35 +1336,12 @@ export default function Invoices() {
             <div className="border-t border-border p-5">
               {recapWizard === 'invoices' && (
                 <div className="flex items-center justify-between text-sm mb-4 px-1">
-                  <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground">
-                      {wizardSelectedIds.length} dari {wizardClientInvoices.length} faktur dipilih
-                    </span>
-                    {wizardStatusFilter !== 'all' && (
-                      <button
-                        type="button"
-                        className="text-xs text-primary hover:underline"
-                        onClick={() => {
-                          const visible = wizardClientInvoices.filter((inv) => inv.status === wizardStatusFilter)
-                          const allVisible = visible.every((inv) => wizardSelectedIds.includes(inv.id))
-                          if (allVisible) {
-                            setWizardSelectedIds((prev) => prev.filter((id) => !visible.some((inv) => inv.id === id)))
-                          } else {
-                            setWizardSelectedIds((prev) => [...new Set([...prev, ...visible.map((inv) => inv.id)])])
-                          }
-                        }}
-                      >
-                        {wizardClientInvoices.filter((inv) => inv.status === wizardStatusFilter).every((inv) => wizardSelectedIds.includes(inv.id))
-                          ? 'Batalkan semua terlihat'
-                          : 'Pilih semua terlihat'}
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-muted-foreground">
+                    {wizardFilteredInvoices.length} dari {wizardClientInvoices.length} faktur akan direkap
+                  </span>
                   <span className="font-semibold text-foreground">
                     Total Saldo: {formatCurrency(
-                      invoices
-                        .filter((i) => wizardSelectedIds.includes(i.id))
-                        .reduce((s, i) => s + Math.max(Number(i.total) - Number(i.amountPaid || 0), 0), 0)
+                      wizardFilteredInvoices.reduce((s: number, i: any) => s + Math.max(Number(i.total) - Number(i.amountPaid || 0), 0), 0)
                     )}
                   </span>
                 </div>
@@ -1356,7 +1358,7 @@ export default function Invoices() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    disabled={wizardSelectedIds.length === 0 || wizardBusy}
+                    disabled={wizardFilteredInvoices.length === 0 || wizardBusy}
                     onClick={handleWizardRecap}
                   >
                     {wizardBusy ? 'Membuat...' : 'Buat Rekap PDF'}

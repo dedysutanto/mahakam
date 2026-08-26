@@ -199,18 +199,27 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-foreground">
-                      {formatCurrency(Number(inv.total) - Number(inv.amountPaid))}
+                      {formatCurrency(Number(inv.total))}
                     </p>
+                    {Number(inv.amountPaid) > 0 && Number(inv.total) - Number(inv.amountPaid) > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Sisa {formatCurrency(Number(inv.total) - Number(inv.amountPaid))}
+                      </p>
+                    )}
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${
                         inv.status === 'paid'
                           ? 'bg-success/15 text-success'
                           : inv.status === 'sent'
                           ? 'bg-accent text-primary'
+                          : inv.status === 'partial'
+                          ? 'bg-amber-100 text-amber-700'
+                          : inv.status === 'overdue'
+                          ? 'bg-red-100 text-red-700'
                           : 'bg-muted text-muted-foreground'
                       }`}
                     >
-                      {inv.status === 'paid' ? 'Lunas' : inv.status === 'sent' ? 'Terkirim' : 'Draft'}
+                      {inv.status === 'paid' ? 'Lunas' : inv.status === 'sent' ? 'Terkirim' : inv.status === 'partial' ? 'Sebagian' : inv.status === 'overdue' ? 'Terlambat' : 'Draft'}
                     </span>
                   </div>
                 </div>
