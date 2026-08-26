@@ -1000,15 +1000,15 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">Nama Bank</label>
-              <input className="input" value={bankName} onChange={(e) => { setBankName(e.target.value); setCompanyDirty(true) }} placeholder="Bank Central Asia (BCA)" />
+              <input className="input" value={bankName} onChange={(e) => { setBankName(e.target.value); setCompanyDirty(true) }} />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">No. Rekening</label>
-              <input className="input" value={bankAccountNumber} onChange={(e) => { setBankAccountNumber(e.target.value); setCompanyDirty(true) }} placeholder="5735278646" />
+              <input className="input" value={bankAccountNumber} onChange={(e) => { setBankAccountNumber(e.target.value); setCompanyDirty(true) }} />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">Atas Nama</label>
-              <input className="input" value={bankAccountHolder} onChange={(e) => { setBankAccountHolder(e.target.value); setCompanyDirty(true) }} placeholder="Erick Erlangga" />
+              <input className="input" value={bankAccountHolder} onChange={(e) => { setBankAccountHolder(e.target.value); setCompanyDirty(true) }} />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">NPWP</label>
