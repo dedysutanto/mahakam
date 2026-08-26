@@ -334,7 +334,10 @@ export async function tenantRoutes(app: FastifyInstance) {
 
     const ext = data.mimetype === 'image/png' ? 'png' : 'jpg'
     const filename = `${id}.${ext}`
-    const filePath = join(process.cwd(), 'uploads', 'logos', filename)
+    const logosDir = join(process.cwd(), 'uploads', 'logos')
+    const filePath = join(logosDir, filename)
+    const { mkdirSync } = await import('fs')
+    mkdirSync(logosDir, { recursive: true })
 
     await pipeline(data.file, createWriteStream(filePath))
 

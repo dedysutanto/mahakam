@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+mkdir -p /app/uploads/logos
+
 echo "Running database migrations..."
 npx prisma migrate deploy
 
