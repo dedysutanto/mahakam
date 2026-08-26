@@ -80,7 +80,10 @@ export default function Invoices() {
   const [newCustOpen, setNewCustOpen] = useState(false)
   const [newCust, setNewCust] = useState({ name: '', email: '', phone: '' })
   const [newProdIdx, setNewProdIdx] = useState<number | null>(null)
-  const [newProduct, setNewProduct] = useState({ name: '', price: 0 })
+  const DEFAULT_UNITS = ['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan']
+  const [unitOptions, setUnitOptions] = useState<string[]>(DEFAULT_UNITS)
+  const defaultUnit = () => (unitOptions.includes('pcs') ? 'pcs' : unitOptions[0] || 'pcs')
+  const [newProduct, setNewProduct] = useState({ name: '', price: 0, unit: 'pcs' })
 
   const emptyForm = () => {
     const now = new Date()
@@ -121,6 +124,18 @@ export default function Invoices() {
   }
 
   useEffect(() => { fetchData() }, [])
+
+  useEffect(() => {
+    fetch('/api/tenants/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        try {
+          const parsed = JSON.parse(data.product_units || '')
+          if (Array.isArray(parsed) && parsed.length > 0) setUnitOptions(parsed.map(String))
+        } catch {}
+      })
+      .catch(() => {})
+  }, [])
 
   // ---------- inline client/product creation ----------
   const handleCustomerSelect = (value: string) => {
@@ -188,7 +203,7 @@ export default function Invoices() {
       const res = await fetch('/api/products/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newProduct.name, price: Number(newProduct.price), unit: 'pcs' }),
+        body: JSON.stringify({ name: newProduct.name, price: Number(newProduct.price), unit: newProduct.unit }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -198,7 +213,7 @@ export default function Invoices() {
       setProducts([...products, created])
       setItem(newProdIdx, { productId: created.id, description: created.name, unitPrice: Number(created.price) })
       setNewProdIdx(null)
-      setNewProduct({ name: '', price: 0 })
+      setNewProduct({ name: '', price: 0, unit: defaultUnit() })
     } catch (err: any) {
       alert(err.message)
     }
@@ -871,7 +886,7 @@ export default function Invoices() {
                 {newProdIdx !== null && (
                   <div className="border border-accent bg-accent/40 rounded-lg p-3 space-y-3 mt-2">
                     <p className="text-xs font-semibold text-primary uppercase tracking-wide">Produk Baru</p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <input
                         type="text" required placeholder="Nama produk *" className="input md:col-span-2"
                         value={newProduct.name}
@@ -882,9 +897,19 @@ export default function Invoices() {
                         value={newProduct.price}
                         onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
                       />
+                      <select
+                        className="input"
+                        title="Satuan produk"
+                        value={newProduct.unit}
+                        onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                      >
+                        {unitOptions.map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex justify-end gap-2">
-                      <button type="button" className="btn btn-secondary" onClick={() => { setNewProdIdx(null); setNewProduct({ name: '', price: 0 }) }}>
+                      <button type="button" className="btn btn-secondary" onClick={() => { setNewProdIdx(null); setNewProduct({ name: '', price: 0, unit: defaultUnit() }) }}>
                         Batal
                       </button>
                       <button type="button" className="btn btn-primary" onClick={handleCreateProduct}>

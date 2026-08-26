@@ -118,6 +118,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T39 | x | Settings "Satuan Produk" chips editor → `product_units` setting; Products strict dropdown from list; clickable product rows | V25 |
 | T40 | x | useFormHistory hook wired into 9 modules (Faktur, Penawaran, Pembelian, Pengeluaran, Produk, Pelanggan, Pajak, Buku Besar, Laporan) so back closes overlays | V26 |
 | T41 | x | expense edit UI (Pencil + edit form) and accounting-safe PUT/DELETE with JE sync | V27 |
+| T42 | x | inline "Produk Baru" panel gains Satuan dropdown from managed unit list (Faktur); full flow ported to Penawaran (was catalog-pick only) | V25 |
 
 ## §B — bugs
 

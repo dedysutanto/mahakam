@@ -61,6 +61,13 @@ export default function Quotes() {
   const [search, setSearch] = useState('')
   const [converting, setConverting] = useState(false)
 
+  // inline product creation
+  const [newProdIdx, setNewProdIdx] = useState<number | null>(null)
+  const DEFAULT_UNITS = ['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan']
+  const [unitOptions, setUnitOptions] = useState<string[]>(DEFAULT_UNITS)
+  const defaultUnit = () => (unitOptions.includes('pcs') ? 'pcs' : unitOptions[0] || 'pcs')
+  const [newProduct, setNewProduct] = useState({ name: '', price: 0, unit: 'pcs' })
+
   const todayStr = new Date().toISOString().slice(0, 10)
   const emptyForm = () => ({
     customerId: '',
@@ -98,6 +105,18 @@ export default function Quotes() {
 
   useEffect(() => { fetchData() }, [])
 
+  useEffect(() => {
+    fetch('/api/tenants/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        try {
+          const parsed = JSON.parse(data.product_units || '')
+          if (Array.isArray(parsed) && parsed.length > 0) setUnitOptions(parsed.map(String))
+        } catch {}
+      })
+      .catch(() => {})
+  }, [])
+
   const filtered = quotes.filter((q) =>
     q.quotationNumber.toLowerCase().includes(search.toLowerCase()) ||
     q.customer?.name?.toLowerCase().includes(search.toLowerCase())
@@ -130,9 +149,38 @@ export default function Quotes() {
   }
 
   const handleProductPick = (idx: number, value: string) => {
-    const p = products.find((x) => x.id === value)
+    if (value === '__new__') {
+      setNewProdIdx(idx)
+      return
+    }
+    setNewProdIdx(null)
+    const p = products.find((x: any) => x.id === value)
     if (p) {
       setItem(idx, { productId: p.id, description: p.name, unitPrice: Number(p.price) })
+    } else {
+      setItem(idx, { productId: '', description: '', unitPrice: 0 })
+    }
+  }
+
+  const handleCreateProduct = async () => {
+    if (newProdIdx === null) return
+    try {
+      const res = await fetch('/api/products/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newProduct.name, price: Number(newProduct.price), unit: newProduct.unit }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.message || 'Gagal membuat produk')
+      }
+      const created = await res.json()
+      setProducts([...products, created])
+      setItem(newProdIdx, { productId: created.id, description: created.name, unitPrice: Number(created.price) })
+      setNewProdIdx(null)
+      setNewProduct({ name: '', price: 0, unit: defaultUnit() })
+    } catch (err: any) {
+      alert(err.message)
     }
   }
 
@@ -540,6 +588,7 @@ export default function Quotes() {
                           {products.map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
+                          {!item.productId && <option value="__new__">+ Produk baru...</option>}
                         </select>
                       ) : (
                         <input
@@ -588,6 +637,41 @@ export default function Quotes() {
                     </div>
                   </div>
                 ))}
+                {newProdIdx !== null && (
+                  <div className="border border-accent bg-accent/40 rounded-lg p-3 space-y-3 mt-2">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">Produk Baru</p>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <input
+                        type="text" required placeholder="Nama produk *" className="input md:col-span-2"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      />
+                      <input
+                        type="number" min="0" required placeholder="Harga jual *" className="input"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
+                      />
+                      <select
+                        className="input"
+                        title="Satuan produk"
+                        value={newProduct.unit}
+                        onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                      >
+                        {unitOptions.map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" className="btn btn-secondary" onClick={() => { setNewProdIdx(null); setNewProduct({ name: '', price: 0, unit: defaultUnit() }) }}>
+                        Batal
+                      </button>
+                      <button type="button" className="btn btn-primary" onClick={handleCreateProduct}>
+                        Simpan Produk
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {!isView && (
                   <button
                     type="button"
