@@ -15,11 +15,11 @@ export async function reportRoutes(app: FastifyInstance) {
     const { tenantId } = request.user as any
     const { dateFrom, dateTo } = request.query as any
 
-    const where: any = { tenantId }
+    const where: any = { entry: { tenantId } }
     if (dateFrom || dateTo) {
-      where.date = {}
-      if (dateFrom) where.date.gte = new Date(dateFrom as string)
-      if (dateTo) where.date.lte = new Date(dateTo as string)
+      where.entry.date = {}
+      if (dateFrom) where.entry.date.gte = new Date(dateFrom as string)
+      if (dateTo) where.entry.date.lte = new Date(dateTo as string)
     }
 
     // Get all journal lines
@@ -86,8 +86,8 @@ export async function reportRoutes(app: FastifyInstance) {
     const { tenantId } = request.user as any
     const { dateTo } = request.query as any
 
-    const where: any = { tenantId }
-    if (dateTo) where.date = { ...where.date, lte: new Date(dateTo as string) }
+    const where: any = { entry: { tenantId } }
+    if (dateTo) where.entry.date = { lte: new Date(dateTo as string) }
 
     const lines = await prisma.journalLine.findMany({
       where,
@@ -163,7 +163,7 @@ export async function reportRoutes(app: FastifyInstance) {
     if (cashLedgerIds.length === 0) return { data: [], message: 'Tidak ada akun kas ditemukan' }
 
     const lines = await prisma.journalLine.findMany({
-      where: { tenantId, ledgerId: { in: cashLedgerIds } },
+      where: { ledgerId: { in: cashLedgerIds } },
       include: { entry: { include: { lines: { include: { ledger: true } } } } },
       orderBy: { date: 'asc' },
     })
@@ -234,7 +234,7 @@ export async function reportRoutes(app: FastifyInstance) {
     }
   })
 
-  // REPI HUTANG PIUTANG (AGING)
+  // PIUTANG HUTANG (AGING)
   app.get('/piutang-hutang', {
     schema: { tags: ['Pelaporan'], summary: 'Get receivables and payables aging report', security: [{ BearerAuth: [] }] },
     preValidation: [authHook(app), validateTenantHook(app)],

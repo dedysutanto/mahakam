@@ -47,6 +47,7 @@ export default function Reports() {
     setLoading(true)
     try {
       const res = await fetch(`/api/reports/${id}${qs}`)
+      if (!res.ok) throw new Error('Gagal memuat laporan')
       const json = await res.json()
       setData(json)
     } catch {
@@ -279,8 +280,9 @@ export default function Reports() {
             />
           </div>
           <button
-            onClick={() => fetchReport('laba-rugi')}
+            onClick={() => selectedReport && fetchReport(selectedReport)}
             className="btn btn-primary self-end"
+            disabled={!selectedReport}
           >
             Terapkan
           </button>
