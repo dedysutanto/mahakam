@@ -73,6 +73,7 @@ export default function Invoices() {
   const [wizardSearch, setWizardSearch] = useState('')
   const [wizardBusy, setWizardBusy] = useState(false)
   const [wizardStatusFilter, setWizardStatusFilter] = useState('sent_partial')
+  const [wizardClientSearch, setWizardClientSearch] = useState('')
 
   const [paying, setPaying] = useState<Invoice | null>(null)
   const [payForm, setPayForm] = useState({ amount: '', method: 'transfer', reference: '', notes: '' })
@@ -310,6 +311,7 @@ export default function Invoices() {
     setWizardStatusFilter('sent_partial')
     setWizardMonth('all')
     setWizardSearch('')
+    setWizardClientSearch('')
   }
 
   const openRecapWizard = () => {
@@ -1261,25 +1263,47 @@ export default function Invoices() {
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5">
               {recapWizard === 'client' && (
-                <div className="space-y-2">
-                  {customers
-                    .filter((c) => invoices.some((inv) => inv.customerId === c.id && inv.status !== 'draft'))
-                    .map((c) => {
-                      const count = invoices.filter((inv) => inv.customerId === c.id && inv.status !== 'draft').length
-                      return (
-                        <button
-                          key={c.id}
-                          onClick={() => wizardSelectClient(c.id)}
-                          className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors"
-                        >
-                          <span className="text-sm font-medium text-foreground">{c.name}</span>
-                          <span className="text-xs text-muted-foreground ml-2">{count} faktur</span>
-                        </button>
-                      )
-                    })}
-                  {customers.filter((c) => invoices.some((inv) => inv.customerId === c.id && inv.status !== 'draft')).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-8">Tidak ada pelanggan dengan faktur non-draft</p>
-                  )}
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    className="input text-sm"
+                    placeholder="Cari nama pelanggan..."
+                    value={wizardClientSearch}
+                    onChange={(e) => setWizardClientSearch(e.target.value)}
+                  />
+                  <div className="space-y-2">
+                    {customers
+                      .filter((c) => {
+                        const count = invoices.filter(
+                          (inv) => inv.customerId === c.id && inv.status !== 'draft'
+                        ).length
+                        return count > 1
+                      })
+                      .filter((c) => !wizardClientSearch || c.name.toLowerCase().includes(wizardClientSearch.toLowerCase()))
+                      .map((c) => {
+                        const count = invoices.filter(
+                          (inv) => inv.customerId === c.id && inv.status !== 'draft'
+                        ).length
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => wizardSelectClient(c.id)}
+                            className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                          >
+                            <span className="text-sm font-medium text-foreground">{c.name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{count} faktur</span>
+                          </button>
+                        )
+                      })}
+                    {customers.filter((c) => {
+                      const count = invoices.filter(
+                        (inv) => inv.customerId === c.id && inv.status !== 'draft'
+                      ).length
+                      return count > 1
+                    }).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">Tidak ada pelanggan dengan lebih dari 1 faktur non-draft</p>
+                    )}
+                  </div>
                 </div>
               )}
 
