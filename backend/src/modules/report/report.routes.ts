@@ -47,7 +47,7 @@ export async function reportRoutes(app: FastifyInstance) {
       }
 
       if (type === 'revenue') {
-        totalRevenue += Number(line.debit) - Number(line.credit)
+        totalRevenue += Number(line.credit) - Number(line.debit)
         accounts[type].push(entry)
       } else if (type === 'expense') {
         totalExpense += Number(line.debit) - Number(line.credit)

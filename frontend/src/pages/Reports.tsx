@@ -94,7 +94,7 @@ export default function Reports() {
                   {data.revenue.accounts.map((acc: any, i: number) => (
                     <div key={i} className="flex justify-between py-2 text-sm">
                       <span className="text-muted-foreground">{acc.name}</span>
-                      <span className="text-foreground">{formatCurrency(acc.debit - acc.credit)}</span>
+                      <span className="text-foreground">{formatCurrency(acc.credit - acc.debit)}</span>
                     </div>
                   ))}
                   <div className="flex justify-between py-2 border-t font-semibold text-foreground">

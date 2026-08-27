@@ -126,6 +126,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T45 | x | recap table: Klien column dropped, Number column 190pt, wrap-aware row heights, summary shows "N faktur" | B15 |
 | T46 | x | rekap wizard filter-driven: status + periode + search filters define content; checkboxes removed; footer totals from filtered set; button disabled at 0; filters reset on open/client change | V29,B16 |
 | T47 | x | dashboard Faktur Terbaru shows invoice total (not outstanding), conditional "Sisa" hint, full status labels incl. Sebagian/Terlambat with distinct colors | B17 |
+| T48 | x | laba-rugi revenue lines use `credit - debit` (credit-normal); expense lines use `debit - credit` (debit-normal); profit = revenue − expense | B18 |
 
 ## §B — bugs
 
@@ -148,3 +149,4 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B15 | 2026-08-26 | Long invoice numbers (e.g. 018/INVOICE/OSB/VIII/2026) wrapped inside the 80pt recap Number column and overlapped following rows because rows advanced a fixed 16pt | Klien column removed, Number column 190pt, wrap-aware row heights via heightOfString (T45) |
 | B16 | 2026-08-26 | Rekap wizard filters were cosmetic — selection silently contained all statuses regardless of active filter | Wizard redesigned: filtered set IS the rekap content; checkboxes deleted (T46,V29) |
 | B17 | 2026-08-26 | Dashboard Faktur Terbaru displayed outstanding (Rp 0 for paid invoices) as the main figure and labeled partial/overdue invoices "Draft" | Show invoice total + conditional Sisa hint; complete status label/color map (T47) |
+| B18 | 2026-08-27 | Laba Rugi computed `debit - credit` on revenue lines (credit-normal accounts), yielding negative revenue and positive expenses → always showed "Rugi"; dashboard had correct `credit - debit` for revenue | Flipped revenue to `credit - debit` in backend; frontend revenue line items match (T48) |
