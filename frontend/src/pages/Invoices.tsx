@@ -722,9 +722,9 @@ export default function Invoices() {
                     <option value="__new__">+ Buat pelanggan baru...</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Tanggal Faktur</label>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Tanggal Faktur</label>
                     <DatePicker
                       required
                       className="input"
@@ -732,11 +732,13 @@ export default function Invoices() {
                       value={formData.issueDate}
                       onChange={(v) => setFormData({ ...formData, issueDate: v })}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Jatuh Tempo</label>
                     <DatePicker
                       required
                       className="input"
                       disabled={isView}
-                      placeholder="Jatuh Tempo"
                       value={formData.dueDate}
                       onChange={(v) => setFormData({ ...formData, dueDate: v })}
                     />
