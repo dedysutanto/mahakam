@@ -58,8 +58,13 @@ export function validateTenantHook(app: FastifyInstance, opts?: { fromParams?: b
   return async (request: any, reply: any) => {
     const { tenantId, userId } = request.user as any
 
-    // API key auth — skip TenantUser lookup, set tenant from user shape
+    // API key auth — skip TenantUser lookup, set tenant from user shape.
+    // When fromParams is set, the path :id must equal the API key's own tenantId (no cross-tenant access).
     if (userId === 'api-key') {
+      const targetTenantId = opts?.fromParams ? ((request.params as any)?.id || tenantId) : tenantId
+      if (targetTenantId !== tenantId) {
+        return reply.code(403).send({ error: 'Akses ditolak. API key tidak dapat mengakses tenant lain.' })
+      }
       const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
       if (!tenant || !tenant.isActive) {
         return reply.code(403).send({ error: 'Akses ditolak. Tenant tidak aktif.' })
@@ -86,6 +91,18 @@ export function validateTenantHook(app: FastifyInstance, opts?: { fromParams?: b
     request.tenant = tenantUser.tenant
     request.tenantRole = tenantUser.role
     request.tenantScopes = tenantUser.scopes || []
+  }
+}
+
+// Admin-only guard for tenant management (members, API keys, logo, tenant rename).
+// owner/admin JWT users pass; API keys NEVER pass even though authHook sets their role to 'admin'.
+export function assertAdminUser(request: any, reply: any) {
+  const { role, userId } = request.user || {}
+  if (userId === 'api-key') {
+    return reply.code(403).send({ error: 'Akses ditolak. API key tidak dapat melakukan operasi admin.' })
+  }
+  if (role !== 'owner' && role !== 'admin') {
+    return reply.code(403).send({ error: 'Akses ditolak. Hanya admin perusahaan.' })
   }
 }
 

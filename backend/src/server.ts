@@ -22,7 +22,7 @@ import { superAdminRoutes } from './modules/superadmin/superadmin.routes'
 import { taxRoutes } from './modules/tax/tax.routes'
 import { join } from 'path'
 
-const APP_VERSION = '1.3.35'
+const APP_VERSION = '1.3.36'
 
 export async function createApp() {
   const app = Fastify({

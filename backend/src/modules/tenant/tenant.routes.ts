@@ -1,4 +1,4 @@
-import { authHook, validateTenantHook, requireScope } from '../../middleware/auth'
+import { authHook, validateTenantHook, requireScope, assertAdminUser } from '../../middleware/auth'
 import bcrypt from 'bcryptjs'
 import { FastifyInstance } from 'fastify'
 import { prisma } from '../../utils/db'
@@ -64,13 +64,10 @@ export async function tenantRoutes(app: FastifyInstance) {
       params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
-  }, async (request: any) => {
+  }, async (request: any, reply: any) => {
     const { id } = request.params as any
-    const { role } = request.user as any
 
-    if (role !== 'owner' && role !== 'admin') {
-      throw new Error('Akses ditolak')
-    }
+    if (assertAdminUser(request, reply)) return
 
     const members = await prisma.tenantUser.findMany({
       where: { tenantId: id },
@@ -91,6 +88,16 @@ export async function tenantRoutes(app: FastifyInstance) {
   })
 
   const isAdminRole = (r: string) => r === 'owner' || r === 'admin'
+
+  const ALLOWED_SCOPES = ['buku-besar', 'faktur', 'penawaran', 'pembelian', 'pengeluaran', 'produk', 'pelanggan', 'pajak', 'laporan', 'pengaturan']
+  const API_KEY_SCOPES = ALLOWED_SCOPES.filter((s) => s !== 'pengaturan')
+
+  function sanitizeScopes(scopes: any, allowlist: string[]): string[] {
+    if (!Array.isArray(scopes)) return []
+    const clean = scopes.filter((s) => typeof s === 'string' && allowlist.includes(s))
+    if (clean.length !== scopes.length) throw new Error('Scope tidak valid')
+    return clean
+  }
 
   async function assertNotLastActiveAdmin(tenantId: string, targetUserId: string) {
     const members = await prisma.tenantUser.findMany({ where: { tenantId } })
@@ -123,11 +130,11 @@ export async function tenantRoutes(app: FastifyInstance) {
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
-    const { role: myRole } = request.user as any
-    if (!isAdminRole(myRole)) throw new Error('Hanya admin perusahaan yang dapat menambah pengguna')
+    if (assertAdminUser(request, reply)) return
 
     const { email, password, fullName, role = 'member', scopes = [] } = request.body as any
     if (!['owner', 'admin', 'member'].includes(role)) throw new Error('Peran tidak valid')
+    const validScopes = role === 'member' ? sanitizeScopes(scopes, ALLOWED_SCOPES) : []
 
     let user = await prisma.user.findUnique({ where: { email } })
     if (!user) {
@@ -152,7 +159,7 @@ export async function tenantRoutes(app: FastifyInstance) {
         tenantId: id,
         userId: user.id,
         role,
-        scopes: role === 'member' ? (Array.isArray(scopes) ? scopes : []) : [],
+        scopes: role === 'member' ? validScopes : [],
       },
     })
 
@@ -190,8 +197,7 @@ export async function tenantRoutes(app: FastifyInstance) {
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, userId } = request.params as any
-    const { role: myRole } = request.user as any
-    if (!isAdminRole(myRole)) throw new Error('Hanya admin perusahaan yang dapat mengubah pengguna')
+    if (assertAdminUser(request, reply)) return
 
     const body = request.body as any
     const target = await prisma.tenantUser.findUnique({
@@ -205,7 +211,10 @@ export async function tenantRoutes(app: FastifyInstance) {
       if (!['owner', 'admin', 'member'].includes(body.role)) throw new Error('Peran tidak valid')
       data.role = body.role
     }
-    if (body.scopes !== undefined) data.scopes = Array.isArray(body.scopes) ? body.scopes : []
+    if (body.scopes !== undefined) {
+      const effectiveRole = body.role !== undefined ? body.role : target.role
+      data.scopes = effectiveRole === 'member' ? sanitizeScopes(body.scopes, ALLOWED_SCOPES) : []
+    }
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive)
 
     const tu = await prisma.tenantUser.update({
@@ -242,8 +251,7 @@ export async function tenantRoutes(app: FastifyInstance) {
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, userId } = request.params as any
-    const { role: myRole } = request.user as any
-    if (!isAdminRole(myRole)) throw new Error('Hanya admin perusahaan yang dapat menghapus pengguna')
+    if (assertAdminUser(request, reply)) return
 
     const target = await prisma.tenantUser.findUnique({
       where: { tenantId_userId: { tenantId: id, userId } },
@@ -315,14 +323,9 @@ export async function tenantRoutes(app: FastifyInstance) {
       security: [{ BearerAuth: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     },
-    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true }), requireScope('pengaturan')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
-    const { role } = request.user as any
-
-    if (role !== 'owner' && role !== 'admin') {
-      throw new Error('Hanya owner/admin yang dapat mengunggah logo')
-    }
 
     const data = await request.file()
     if (!data) throw new Error('File tidak ditemukan')
@@ -351,12 +354,18 @@ export async function tenantRoutes(app: FastifyInstance) {
 
   // UPDATE TENANT
   app.put('/:id', {
-    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
+    schema: {
+      tags: ['Pengaturan'],
+      summary: 'Update company profile',
+      description: 'Update company name and subdomain. Requires pengaturan scope (staff with settings access or admin).',
+      security: [{ BearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+      body: { type: 'object', additionalProperties: false, properties: { name: { type: 'string' }, subdomain: { type: 'string' } } },
+    },
+    preValidation: [authHook(app), validateTenantHook(app, { fromParams: true }), requireScope('pengaturan')],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
     const { name, subdomain } = request.body as any
-
-    if (!isAdminRole(request.tenantRole)) throw new Error('Hanya admin perusahaan yang dapat mengubah data perusahaan')
 
     await prisma.tenant.update({
       where: { id },
@@ -380,10 +389,9 @@ export async function tenantRoutes(app: FastifyInstance) {
       params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     },
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
-  }, async (request: any) => {
+  }, async (request: any, reply: any) => {
     const { id } = request.params as any
-    const { role } = request.user as any
-    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+    if (assertAdminUser(request, reply)) return
 
     const keys = await prisma.apiKey.findMany({
       where: { tenantId: id },
@@ -415,7 +423,7 @@ export async function tenantRoutes(app: FastifyInstance) {
         required: ['name'],
         properties: {
           name: { type: 'string', minLength: 1, description: 'Descriptive name for this API key' },
-          scopes: { type: 'array', items: { type: 'string', enum: ['faktur', 'produk', 'pelanggan', 'suplier', 'pembelian', 'biaya', 'buku-besar', 'pelaporan', 'pengaturan', 'pengguna'] }, description: 'Module access scopes (optional, defaults to all)' },
+          scopes: { type: 'array', items: { type: 'string', enum: ['buku-besar', 'faktur', 'penawaran', 'pembelian', 'pengeluaran', 'produk', 'pelanggan', 'pajak', 'laporan'] }, description: 'Module access scopes (optional, defaults to all)' },
           expiresIn: { type: 'string', enum: ['30d', '90d', '180d', '1y', 'never'], description: 'Expiry duration (optional, defaults to never)' },
         },
       },
@@ -423,11 +431,11 @@ export async function tenantRoutes(app: FastifyInstance) {
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id } = request.params as any
-    const { role } = request.user as any
-    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+    if (assertAdminUser(request, reply)) return
 
     const { name, scopes = [], expiresIn } = request.body as any
     if (!name || !String(name).trim()) throw new Error('Nama API key wajib diisi')
+    const validScopes = sanitizeScopes(scopes, API_KEY_SCOPES)
 
     const rawKey = 'mk_live_' + randomBytes(20).toString('hex')
     const keyPrefix = rawKey.slice(0, 14)
@@ -451,7 +459,7 @@ export async function tenantRoutes(app: FastifyInstance) {
         name: String(name).trim(),
         keyPrefix,
         keyHash,
-        scopes: Array.isArray(scopes) ? scopes : [],
+        scopes: validScopes,
         expiresAt,
       },
     })
@@ -483,8 +491,7 @@ export async function tenantRoutes(app: FastifyInstance) {
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, keyId } = request.params as any
-    const { role } = request.user as any
-    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+    if (assertAdminUser(request, reply)) return
 
     const key = await prisma.apiKey.findFirst({ where: { id: keyId, tenantId: id } })
     if (!key) throw new Error('API key tidak ditemukan')
@@ -507,8 +514,7 @@ export async function tenantRoutes(app: FastifyInstance) {
     preValidation: [authHook(app), validateTenantHook(app, { fromParams: true })],
   }, async (request: any, reply: any) => {
     const { id, keyId } = request.params as any
-    const { role } = request.user as any
-    if (!isAdminRole(role)) throw new Error('Akses ditolak')
+    if (assertAdminUser(request, reply)) return
 
     const { isActive } = request.body as any
     const key = await prisma.apiKey.findFirst({ where: { id: keyId, tenantId: id } })
