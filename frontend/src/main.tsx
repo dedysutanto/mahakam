@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { ThemeProvider } from './lib/ThemeContext'
+import 'flatpickr/dist/flatpickr.min.css'
 import './index.css'
 
 // Auto-attach JWT token to all /api/ requests, and handle 401 responses

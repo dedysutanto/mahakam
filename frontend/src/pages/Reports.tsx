@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
+import DatePicker from '../components/DatePicker'
 import { BarChart3, FileText, TrendingUp, ArrowLeft, Printer } from 'lucide-react'
 
 interface ReportData {
@@ -265,20 +266,18 @@ export default function Reports() {
         <div className="flex flex-col sm:flex-row gap-4 bg-card rounded-xl border border-border p-5 shadow-sm">
           <div className="flex-1">
             <label className="block text-sm font-medium text-foreground mb-1">Dari Tanggal</label>
-            <input
-              type="date"
+            <DatePicker
               className="input"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={setDateFrom}
             />
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-foreground mb-1">Sampai Tanggal</label>
-            <input
-              type="date"
+            <DatePicker
               className="input"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={setDateTo}
             />
           </div>
           <button

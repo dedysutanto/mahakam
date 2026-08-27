@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
+import DatePicker from '../components/DatePicker'
 import { Plus, Search, FileText, Trash2, Eye, Pencil, Download, ArrowRightCircle, ArrowLeft } from 'lucide-react'
 
 const toDateInput = (d: Date) =>
@@ -487,18 +488,18 @@ export default function Quotes() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">Tanggal</label>
-                    <input
-                      type="date" required className="input" disabled={isView}
+                    <DatePicker
+                      required className="input" disabled={isView}
                       value={formData.issueDate}
-                      onChange={(e) => setFormData({ ...formData, issueDate: e.target.value })}
+                      onChange={(v) => setFormData({ ...formData, issueDate: v })}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">Berlaku Hingga</label>
-                    <input
-                      type="date" className="input" disabled={isView}
+                    <DatePicker
+                      className="input" disabled={isView}
                       value={formData.validUntil}
-                      onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
+                      onChange={(v) => setFormData({ ...formData, validUntil: v })}
                     />
                   </div>
                 </div>

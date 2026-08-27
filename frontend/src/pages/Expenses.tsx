@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
+import DatePicker from '../components/DatePicker'
 import { ArrowLeft, Plus, Search, Receipt, Trash2, Pencil } from 'lucide-react'
 
 interface Expense {
@@ -255,12 +256,11 @@ export default function Expenses() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Tanggal</label>
-                <input
-                  type="date"
+                <DatePicker
                   required
                   className="input"
                   value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  onChange={(v) => setFormData({ ...formData, date: v })}
                 />
               </div>
               <div>

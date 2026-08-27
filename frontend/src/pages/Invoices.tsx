@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { useAuth } from '../lib/AuthContext'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
+import DatePicker from '../components/DatePicker'
 import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Wallet, Tag, CheckSquare, Square } from 'lucide-react'
 
 interface InvoiceItem {
@@ -701,22 +702,20 @@ export default function Invoices() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Tanggal Faktur</label>
                   <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="date"
+                    <DatePicker
                       required
                       className="input"
                       disabled={isView}
                       value={formData.issueDate}
-                      onChange={(e) => setFormData({ ...formData, issueDate: e.target.value })}
+                      onChange={(v) => setFormData({ ...formData, issueDate: v })}
                     />
-                    <input
-                      type="date"
+                    <DatePicker
                       required
                       className="input"
                       disabled={isView}
-                      title="Jatuh Tempo"
+                      placeholder="Jatuh Tempo"
                       value={formData.dueDate}
-                      onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                      onChange={(v) => setFormData({ ...formData, dueDate: v })}
                     />
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
+import DatePicker from '../components/DatePicker'
 import { ArrowLeft, Plus, Search, ShoppingCart, Trash2, Eye, Pencil } from 'lucide-react'
 
 interface PurchaseItem {
@@ -368,13 +369,12 @@ export default function Purchases() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Tanggal</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     required
                     className="input"
                     disabled={formMode === 'view'}
                     value={formData.orderDate}
-                    onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, orderDate: v })}
                   />
                 </div>
                 <div>
