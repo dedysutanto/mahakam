@@ -29,13 +29,13 @@ export async function reportRoutes(app: FastifyInstance) {
     })
 
     // Aggregate by account type
-    const accounts: Record<string, any> = {}
+    const accounts: Record<string, any[]> = {}
     let totalRevenue = 0
     let totalExpense = 0
 
     for (const line of lines) {
       const type = line.ledger.type
-      if (!accounts[type]) accounts[type] = { revenue: [], expense: [] }
+      if (!accounts[type]) accounts[type] = []
 
       const entry = {
         code: line.ledger.code,
@@ -48,10 +48,10 @@ export async function reportRoutes(app: FastifyInstance) {
 
       if (type === 'revenue') {
         totalRevenue += Number(line.debit) - Number(line.credit)
-        accounts[type].revenue.push(entry)
+        accounts[type].push(entry)
       } else if (type === 'expense') {
         totalExpense += Number(line.debit) - Number(line.credit)
-        accounts[type].expense.push(entry)
+        accounts[type].push(entry)
       }
     }
 
