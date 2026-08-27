@@ -71,7 +71,7 @@ export default function Invoices() {
   const [wizardMonth, setWizardMonth] = useState('all')
   const [wizardSearch, setWizardSearch] = useState('')
   const [wizardBusy, setWizardBusy] = useState(false)
-  const [wizardStatusFilter, setWizardStatusFilter] = useState('all')
+  const [wizardStatusFilter, setWizardStatusFilter] = useState('sent_partial')
 
   const [paying, setPaying] = useState<Invoice | null>(null)
   const [payForm, setPayForm] = useState({ amount: '', method: 'transfer', reference: '', notes: '' })
@@ -305,7 +305,7 @@ export default function Invoices() {
   }
 
   const resetWizardFilters = () => {
-    setWizardStatusFilter('all')
+    setWizardStatusFilter('sent_partial')
     setWizardMonth('all')
     setWizardSearch('')
   }
@@ -331,15 +331,34 @@ export default function Invoices() {
 
   // Filters define rekap content exactly — anything not matching is excluded (V29)
   const wizardFilteredInvoices = wizardClientInvoices.filter((inv: any) =>
-    (wizardStatusFilter === 'all' || inv.status === wizardStatusFilter)
+    (wizardStatusFilter === 'all'
+      || (wizardStatusFilter === 'sent_partial' && (inv.status === 'sent' || inv.status === 'partial'))
+      || inv.status === wizardStatusFilter)
     && (wizardMonth === 'all' || String(inv.issueDate).slice(0, 7) === wizardMonth)
     && (!wizardSearch || inv.invoiceNumber.toLowerCase().includes(wizardSearch.toLowerCase()))
   )
 
   const wizardSelectClient = (clientId: string) => {
     setSelectedClient(clientId)
-    resetWizardFilters()
+    setWizardStatusFilter('sent_partial')
+    setWizardSearch('')
     setRecapWizard('invoices')
+
+    // Compute default month: current → last → all
+    const clientInvoices = invoices.filter(
+      (inv) => inv.customerId === clientId && inv.status !== 'draft'
+    )
+    const months = Array.from(
+      new Set(clientInvoices.map((inv: any) => String(inv.issueDate).slice(0, 7)))
+    ).sort().reverse()
+    const now = new Date()
+    const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1)
+    const last = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+
+    if (months.includes(cur)) setWizardMonth(cur)
+    else if (months.includes(last)) setWizardMonth(last)
+    else setWizardMonth('all')
   }
 
   const handleWizardRecap = async () => {
@@ -1268,6 +1287,7 @@ export default function Invoices() {
                       onChange={(e) => setWizardStatusFilter(e.target.value)}
                     >
                       <option value="all">Semua Status</option>
+                      <option value="sent_partial">Terkirim & Sebagian</option>
                       {Object.entries(statusLabels)
                         .filter(([k]) => k !== 'draft')
                         .map(([k, v]) => (
