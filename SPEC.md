@@ -74,6 +74,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V27: Expense PUT/DELETE keep the auto-posted journal entry in sync — PUT rebuilds JE lines/date/description from the final stored row (or posts a fresh JE for legacy rows without one); DELETE removes the linked JE in the same transaction. No orphaned or stale entries in Buku Besar.
 - V28: Client-facing stats count `type='customer'` contacts only; vendors excluded.
 - V29: Rekap wizard includes exactly the invoices matching its active filters (status ∧ periode ∧ search); no separate selection state exists — anything not matching is excluded.
+- V30: Dashboard exposes `potentialRevenue` — total outstanding on non-draft unpaid invoices (sent/partial/overdue).
 
 ## §T — tasks
 
@@ -127,6 +128,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T46 | x | rekap wizard filter-driven: status + periode + search filters define content; checkboxes removed; footer totals from filtered set; button disabled at 0; filters reset on open/client change | V29,B16 |
 | T47 | x | dashboard Faktur Terbaru shows invoice total (not outstanding), conditional "Sisa" hint, full status labels incl. Sebagian/Terlambat with distinct colors | B17 |
 | T48 | x | laba-rugi revenue lines use `credit - debit` (credit-normal); expense lines use `debit - credit` (debit-normal); profit = revenue − expense | B18 |
+| T49 | x | dashboard adds Potensi Pendapatan stat card: aggregate outstanding on non-draft unpaid invoices, displayed in amber with DollarSign icon | V30 |
 
 ## §B — bugs
 

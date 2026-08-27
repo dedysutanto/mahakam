@@ -91,6 +91,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       totalExpense,
       totalInvoices,
       unpaidInvoices,
+      activeInvoices,
       totalCustomers,
       recentInvoices,
       recentExpenses,
@@ -116,6 +117,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
       prisma.invoice.count({ where: { tenantId } }),
       prisma.invoice.count({ where: { tenantId, status: { not: 'paid' } } }),
+      prisma.invoice.aggregate({
+        where: { tenantId, status: { in: ['sent', 'partial', 'overdue'] } },
+        _sum: { total: true, amountPaid: true },
+      }).catch(() => ({ _sum: { total: null, amountPaid: null } })),
       prisma.customer.count({ where: { tenantId, type: 'customer' } }),
 
       prisma.invoice.findMany({
@@ -153,6 +158,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const revenueTotal = Number(totalRevenue._sum.credit || 0) - Number(totalRevenue._sum.debit || 0)
     const expenseTotal = Number(totalExpense._sum.debit || 0) - Number(totalExpense._sum.credit || 0)
     const profit = revenueTotal - expenseTotal
+    const potentialRevenue = Number(activeInvoices._sum.total || 0) - Number(activeInvoices._sum.amountPaid || 0)
 
     // Previous period comparison
     const prevFilter = previousPeriodFilter(period, now)
@@ -193,6 +199,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         revenue: { amount: revenueTotal, formatted: formatCurrency(revenueTotal), period: periodLabel, change: revenueChange },
         expense: { amount: expenseTotal, formatted: formatCurrency(expenseTotal), period: periodLabel, change: expenseChange },
         profit: { amount: profit, formatted: formatCurrency(profit), isProfit: profit >= 0 },
+        potentialRevenue: { amount: potentialRevenue, formatted: formatCurrency(potentialRevenue) },
         totalInvoices,
         unpaidInvoices,
         totalCustomers,

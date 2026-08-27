@@ -3,13 +3,14 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import Layout from '../components/Layout'
 import { formatCurrency } from '../lib/utils'
-import { TrendingUp, TrendingDown, FileText, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, FileText, ArrowUpRight, ArrowDownRight, DollarSign } from 'lucide-react'
 
 interface DashboardData {
   overview: {
     revenue: { amount: number; formatted: string; period: string; change: number | null }
     expense: { amount: number; formatted: string; period: string; change: number | null }
     profit: { amount: number; formatted: string; isProfit: boolean }
+    potentialRevenue: { amount: number; formatted: string }
     totalInvoices: number
     unpaidInvoices: number
     totalCustomers: number
@@ -119,6 +120,15 @@ export default function Dashboard() {
       color: 'text-primary',
       bg: 'bg-accent',
     },
+    {
+      label: 'Potensi Pendapatan',
+      value: data.overview.potentialRevenue.formatted || 'Rp 0',
+      change: 'Aktif',
+      positive: true,
+      icon: DollarSign,
+      color: 'text-amber-600',
+      bg: 'bg-amber-100',
+    },
   ]
 
   return (
@@ -142,7 +152,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {stats.map((stat, i) => (
             <div key={i} className="bg-card rounded-xl border border-border p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
