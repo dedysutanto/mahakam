@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
+import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { ArrowLeft, Plus, Search, Receipt, Trash2, Pencil } from 'lucide-react'
 
 interface Expense {
@@ -28,6 +29,7 @@ export default function Expenses() {
   const [showForm, setShowForm] = useState(false)
   useFormHistory(showForm, () => setShowForm(false))
   const [search, setSearch] = useState('')
+  const [period, setPeriod] = useState('all')
   const emptyForm = () => ({
     ledgerId: '',
     vendorId: '',
@@ -62,9 +64,10 @@ export default function Expenses() {
 
   const filtered = expenses.filter(
     (exp) =>
-      exp.expenseNumber.toLowerCase().includes(search.toLowerCase()) ||
+      (exp.expenseNumber.toLowerCase().includes(search.toLowerCase()) ||
       exp.description.toLowerCase().includes(search.toLowerCase()) ||
-      (exp.vendorName || '').toLowerCase().includes(search.toLowerCase())
+      (exp.vendorName || '').toLowerCase().includes(search.toLowerCase()))
+      && matchPeriod(exp.date, period)
   )
 
   // ---------- vendor select (mirrors Purchases flow) ----------
@@ -338,6 +341,9 @@ export default function Expenses() {
 
         {!showForm && (
         <>
+        {/* Period Filter */}
+        <PeriodFilter value={period} onChange={setPeriod} />
+
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />

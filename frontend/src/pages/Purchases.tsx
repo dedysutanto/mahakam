@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
+import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { ArrowLeft, Plus, Search, ShoppingCart, Trash2, Eye, Pencil } from 'lucide-react'
 
 interface PurchaseItem {
@@ -45,6 +46,7 @@ export default function Purchases() {
   const [editingId, setEditingId] = useState<string | null>(null)
   useFormHistory(showForm, () => { setShowForm(false); resetForm() })
   const [search, setSearch] = useState('')
+  const [period, setPeriod] = useState('all')
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const [formData, setFormData] = useState({
@@ -85,8 +87,9 @@ export default function Purchases() {
   useEffect(() => { fetchData() }, [])
 
   const filtered = purchases.filter((p) =>
-    p.purchaseNumber.toLowerCase().includes(search.toLowerCase()) ||
-    p.vendor?.name.toLowerCase().includes(search.toLowerCase())
+    (p.purchaseNumber.toLowerCase().includes(search.toLowerCase()) ||
+    p.vendor?.name.toLowerCase().includes(search.toLowerCase()))
+    && matchPeriod(p.orderDate, period)
   )
 
   // ---------- inline vendor creation ----------
@@ -556,6 +559,9 @@ export default function Purchases() {
 
         {!showForm && (
         <>
+        {/* Period Filter */}
+        <PeriodFilter value={period} onChange={setPeriod} />
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
           <input

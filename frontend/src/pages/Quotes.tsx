@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
+import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { Plus, Search, FileText, Trash2, Eye, Pencil, Download, ArrowRightCircle, ArrowLeft } from 'lucide-react'
 
 const toDateInput = (d: Date) =>
@@ -60,6 +61,7 @@ export default function Quotes() {
   const [returnToView, setReturnToView] = useState(false)
   useFormHistory(showForm, () => { setShowForm(false); setReturnToView(false) })
   const [search, setSearch] = useState('')
+  const [period, setPeriod] = useState('all')
   const [converting, setConverting] = useState(false)
 
   // inline product creation
@@ -119,8 +121,9 @@ export default function Quotes() {
   }, [])
 
   const filtered = quotes.filter((q) =>
-    q.quotationNumber.toLowerCase().includes(search.toLowerCase()) ||
-    q.customer?.name?.toLowerCase().includes(search.toLowerCase())
+    (q.quotationNumber.toLowerCase().includes(search.toLowerCase()) ||
+    q.customer?.name?.toLowerCase().includes(search.toLowerCase()))
+    && matchPeriod(q.issueDate, period)
   )
 
   // ---------- form helpers ----------
@@ -785,6 +788,9 @@ export default function Quotes() {
         </div>
 
         <>
+          {/* Period Filter */}
+          <PeriodFilter value={period} onChange={setPeriod} />
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input

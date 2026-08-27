@@ -4,6 +4,7 @@ import { useFormHistory } from '../lib/useFormHistory'
 import { useAuth } from '../lib/AuthContext'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
+import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Wallet, Tag, CheckSquare, Square } from 'lucide-react'
 
 interface InvoiceItem {
@@ -77,6 +78,7 @@ export default function Invoices() {
   const [payForm, setPayForm] = useState({ amount: '', method: 'transfer', reference: '', notes: '' })
   const [payBusy, setPayBusy] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [period, setPeriod] = useState('all')
 
   // inline creation state
   const [newCustOpen, setNewCustOpen] = useState(false)
@@ -226,7 +228,7 @@ export default function Invoices() {
       inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
       inv.customerName.toLowerCase().includes(search.toLowerCase())
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter
-    return matchSearch && matchStatus
+    return matchSearch && matchStatus && matchPeriod(inv.issueDate, period)
   })
 
   const toggleSelect = (id: string) => {
@@ -1040,6 +1042,9 @@ export default function Invoices() {
 
         {!showForm && (
         <>
+        {/* Period Filter */}
+        <PeriodFilter value={period} onChange={setPeriod} />
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
