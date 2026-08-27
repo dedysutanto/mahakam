@@ -74,6 +74,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V27: Expense PUT/DELETE keep the auto-posted journal entry in sync — PUT rebuilds JE lines/date/description from the final stored row (or posts a fresh JE for legacy rows without one); DELETE removes the linked JE in the same transaction. No orphaned or stale entries in Buku Besar.
 - V28: Client-facing stats count `type='customer'` contacts only; vendors excluded.
 - V29: Rekap wizard includes exactly the invoices matching its active filters (status ∧ periode ∧ search); no separate selection state exists — anything not matching is excluded.
+- V30: Period filter is a shared UI component (button pills); filtering is client-side via `matchPeriod(dateStr, period)` over `issueDate`/`createdAt` fields; default period is "Semua" (all time).
 
 ## §T — tasks
 
@@ -129,6 +130,12 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T48 | x | laba-rugi revenue lines use `credit - debit` (credit-normal); expense lines use `debit - credit` (debit-normal); profit = revenue − expense | B18 |
 | T49 | x | dashboard Total Faktur card shows total monetary value of all non-draft invoices (sent/partial/overdue/paid) with invoice count as subtitle | V29a |
 | T50 | x | Potensi Pendapatan card removed from dashboard — period-agnostic receivables metric replaced by total invoice value card | T49 |
+| T51 | x | shared PeriodFilter component (button pills: 30 Hari, Bulan Ini, Bulan Lalu, Tahun Ini, Tahun Lalu, Semua) wired into Invoices, Quotes, Purchases, Expenses; `matchPeriod()` helper for client-side date range filtering | V30 |
+| T52 | x | status filter dropdown on Quotes (all statuses) and Purchases (all statuses) matching Invoices pattern | — |
+| T53 | x | mobile sticky columns: Invoices (checkbox+No.Faktur+Pelanggan), Quotes (No.Penawaran+Pelanggan), Purchases (No.Pembelian+Vendor), Expenses (No.Pengeluaran+Deskripsi+Vendor); `position: sticky` with cumulative `left` offsets, `bg-card/95 backdrop-blur border-r` | — |
+| T54 | x | rekap wizard client filter shows only clients with >1 non-draft invoice (excludes draft-only); search input added to wizard client list | V29 |
+| T55 | x | DatePicker double-input fix — removed `altInput` from flatpickr; use native `dateFormat: 'd/m/Y'`; pass Date objects to `setDate()` to avoid format mismatch | — |
+| T56 | x | invoice create/edit/view: added visible "Jatuh Tempo" label to due date field; restructured to match Quotes page pattern (each DatePicker has its own `<label>`) | — |
 
 ## §B — bugs
 
@@ -152,3 +159,5 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B16 | 2026-08-26 | Rekap wizard filters were cosmetic — selection silently contained all statuses regardless of active filter | Wizard redesigned: filtered set IS the rekap content; checkboxes deleted (T46,V29) |
 | B17 | 2026-08-26 | Dashboard Faktur Terbaru displayed outstanding (Rp 0 for paid invoices) as the main figure and labeled partial/overdue invoices "Draft" | Show invoice total + conditional Sisa hint; complete status label/color map (T47) |
 | B18 | 2026-08-27 | Laba Rugi computed `debit - credit` on revenue lines (credit-normal accounts), yielding negative revenue and positive expenses → always showed "Rugi"; dashboard had correct `credit - debit` for revenue | Flipped revenue to `credit - debit` in backend; frontend revenue line items match (T48) |
+| B19 | 2026-08-27 | DatePicker double input: flatpickr `altInput` creates sibling alt input; React re-render resets original input `type=hidden` → `type=text`, making both inputs visible | Removed `altInput`, use `dateFormat: 'd/m/Y'` directly; pass Date objects to `setDate()` (T55) |
+| B20 | 2026-08-27 | Invoice create/edit/view due date field had no visible `<label>` — only `placeholder="Jatuh Tempo"` which disappears once filled | Added "Jatuh Tempo" `<label>` above DatePicker; restructured to grid-cols-2 with individual labels (T56) |
