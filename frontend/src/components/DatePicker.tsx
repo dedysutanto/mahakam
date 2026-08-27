@@ -18,9 +18,7 @@ export default function DatePicker({ value, onChange, placeholder, disabled, req
   useEffect(() => {
     if (!inputRef.current) return
     fpRef.current = flatpickr(inputRef.current, {
-      dateFormat: 'Y-m-d',
-      altInput: true,
-      altFormat: 'd/m/Y',
+      dateFormat: 'd/m/Y',
       locale: Indonesian,
       onChange: (selectedDates) => {
         if (selectedDates[0]) {
@@ -38,7 +36,11 @@ export default function DatePicker({ value, onChange, placeholder, disabled, req
 
   useEffect(() => {
     if (fpRef.current) {
-      fpRef.current.setDate(value || '', false)
+      if (value) {
+        fpRef.current.setDate(new Date(value + 'T00:00:00'), false)
+      } else {
+        fpRef.current.setDate('', false)
+      }
     }
   }, [value])
 
