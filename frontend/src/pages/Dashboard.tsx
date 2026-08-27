@@ -10,7 +10,7 @@ interface DashboardData {
     revenue: { amount: number; formatted: string; period: string; change: number | null }
     expense: { amount: number; formatted: string; period: string; change: number | null }
     profit: { amount: number; formatted: string; isProfit: boolean }
-    totalInvoiceValue: { amount: number; formatted: string }
+    totalInvoiceValue: { amount: number; formatted: string; period: string }
     totalInvoices: number
     unpaidInvoices: number
     totalCustomers: number
@@ -103,7 +103,7 @@ export default function Dashboard() {
       bg: 'bg-destructive/10',
     },
     {
-      label: 'Laba/Rugi',
+      label: `Laba/Rugi (${data.overview.revenue.period})`,
       value: data.overview.profit.formatted || 'Rp 0',
       change: data.overview.profit.isProfit ? 'Untung' : 'Rugi',
       positive: data.overview.profit.isProfit ?? false,
@@ -112,13 +112,22 @@ export default function Dashboard() {
       bg: data.overview.profit.isProfit ? 'bg-success/10' : 'bg-destructive/10',
     },
     {
-      label: 'Faktur Belum Dibayar',
+      label: `Faktur Belum Dibayar (${data.overview.totalInvoiceValue?.period || ''})`,
       value: data.overview.unpaidInvoices.toString() || '0',
-      change: `${data.overview.totalInvoices || 0} total`,
+      change: `${data.overview.unpaidInvoices} dari ${data.overview.totalInvoices} faktur`,
       positive: true,
       icon: FileText,
       color: 'text-primary',
       bg: 'bg-accent',
+    },
+    {
+      label: `Total Faktur (${data.overview.totalInvoiceValue?.period || ''})`,
+      value: data.overview.totalInvoiceValue?.formatted || 'Rp 0',
+      change: `${data.overview.totalInvoices || 0} faktur`,
+      positive: true,
+      icon: FileText,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-100',
     },
   ]
 
@@ -143,7 +152,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {stats.map((stat, i) => (
             <div key={i} className="bg-card rounded-xl border border-border p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -161,16 +170,11 @@ export default function Dashboard() {
         </div>
 
         {/* Overview cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gradient-to-br from-primary to-primary rounded-xl p-5 text-white shadow-lg shadow-blue-200">
             <p className="text-primary-foreground/60 text-sm">Total Pelanggan</p>
             <p className="text-3xl font-bold mt-1">{data?.overview.totalCustomers}</p>
             <p className="text-primary-foreground/75 text-xs mt-2">Aktif</p>
-          </div>
-          <div className="bg-gradient-to-br from-success to-success rounded-xl p-5 text-white shadow-lg shadow-emerald-200">
-            <p className="text-success-foreground/60 text-sm">Total Faktur</p>
-            <p className="text-3xl font-bold mt-1">{data?.overview.totalInvoiceValue?.formatted || 'Rp 0'}</p>
-            <p className="text-success-foreground/75 text-xs mt-2">{data?.overview.totalInvoices || 0} faktur</p>
           </div>
           <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-xl p-5 text-white shadow-lg shadow-violet-200">
             <p className="text-violet-100 text-sm">Rasio Pembayaran</p>

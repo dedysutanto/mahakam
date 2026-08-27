@@ -115,10 +115,25 @@ export async function dashboardRoutes(app: FastifyInstance) {
         _sum: { debit: true, credit: true },
       }).catch(() => ({ _sum: { debit: null, credit: null } })),
 
-      prisma.invoice.count({ where: { tenantId } }),
-      prisma.invoice.count({ where: { tenantId, status: { not: 'paid' } } }),
+      prisma.invoice.count({
+        where: {
+          tenantId,
+          ...(dateFilter ? { issueDate: dateFilter } : {}),
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          tenantId,
+          status: { not: 'paid' },
+          ...(dateFilter ? { issueDate: dateFilter } : {}),
+        },
+      }),
       prisma.invoice.aggregate({
-        where: { tenantId, status: { not: 'draft' } },
+        where: {
+          tenantId,
+          status: { not: 'draft' },
+          ...(dateFilter ? { issueDate: dateFilter } : {}),
+        },
         _sum: { total: true },
       }).catch(() => ({ _sum: { total: null } })),
       prisma.customer.count({ where: { tenantId, type: 'customer' } }),
@@ -199,7 +214,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         revenue: { amount: revenueTotal, formatted: formatCurrency(revenueTotal), period: periodLabel, change: revenueChange },
         expense: { amount: expenseTotal, formatted: formatCurrency(expenseTotal), period: periodLabel, change: expenseChange },
         profit: { amount: profit, formatted: formatCurrency(profit), isProfit: profit >= 0 },
-        totalInvoiceValue: { amount: totalInvoiceAmount, formatted: formatCurrency(totalInvoiceAmount) },
+        totalInvoiceValue: { amount: totalInvoiceAmount, formatted: formatCurrency(totalInvoiceAmount), period: periodLabel },
         totalInvoices,
         unpaidInvoices,
         totalCustomers,
