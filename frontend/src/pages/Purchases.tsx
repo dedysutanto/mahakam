@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, formatDateDMY } from '../lib/utils'
 import { ArrowLeft, Plus, Search, ShoppingCart, Trash2, Eye, Pencil } from 'lucide-react'
 
 interface PurchaseItem {
@@ -587,7 +587,7 @@ export default function Purchases() {
                       <span className="text-sm font-medium text-primary">{p.purchaseNumber}</span>
                     </td>
                     <td className="px-5 py-3 text-sm text-foreground">{p.vendor?.name}</td>
-                    <td className="px-5 py-3 text-sm text-muted-foreground">{new Date(p.orderDate).toLocaleDateString('id-ID')}</td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(p.orderDate)}</td>
                     <td className="px-5 py-3 text-sm text-right font-medium text-foreground">{formatCurrency(p.total)}</td>
                     <td className="px-5 py-3 text-center">
                       <span className={`badge ${p.status === 'received' ? 'badge-success' : p.status === 'ordered' ? 'badge-info' : 'badge-default'}`}>

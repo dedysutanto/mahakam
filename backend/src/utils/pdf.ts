@@ -13,6 +13,14 @@ function formatDate(d: Date | string): string {
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function formatDateShort(d: Date | string): string {
+  const dt = new Date(d)
+  const dd = String(dt.getDate()).padStart(2, '0')
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const yyyy = dt.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
 async function getSetting(tenantId: string, key: string, fallback: string): Promise<string> {
   const row = await prisma.setting.findUnique({
     where: { tenantId_key: { tenantId, key } },
@@ -690,7 +698,7 @@ export async function generateRecapPdf(invoiceIds: string[], tenantId: string): 
 
   // Header info rows
   const dayName = new Date().toLocaleDateString('id-ID', { weekday: 'long' })
-  const dateStr = new Date().toLocaleDateString('id-ID')
+  const dateStr = formatDateShort(new Date())
   const rows: Array<[string, string]> = [
     ['Kepada YTH', client.customer?.name || client.customerName || '-'],
     ['Telephone/Mobile', client.customer?.phone || client.customerPhone || '-'],
@@ -728,7 +736,7 @@ export async function generateRecapPdf(invoiceIds: string[], tenantId: string): 
     doc.text(inv.invoiceNumber, colNum.x, y, { width: colNum.w })
     doc.text(currency(Number(inv.total)), colJml.x, y, { width: colJml.w, align: 'right' })
     doc.text(currency(saldo), colSaldo.x, y, { width: colSaldo.w, align: 'right' })
-    doc.text(new Date(inv.issueDate).toLocaleDateString('id-ID'), colTgl.x, y, { width: colTgl.w, align: 'right' })
+    doc.text(formatDateShort(inv.issueDate), colTgl.x, y, { width: colTgl.w, align: 'right' })
     const numH = doc.heightOfString(inv.invoiceNumber, { width: colNum.w })
     y += Math.max(numH + 6, 16)
   }

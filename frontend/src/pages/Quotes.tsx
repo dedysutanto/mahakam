@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, formatDateDMY } from '../lib/utils'
 import { Plus, Search, FileText, Trash2, Eye, Pencil, Download, ArrowRightCircle, ArrowLeft } from 'lucide-react'
 
 const toDateInput = (d: Date) =>
@@ -817,9 +817,9 @@ export default function Quotes() {
                           <span className="text-sm font-medium text-primary">{q.quotationNumber}</span>
                         </td>
                         <td className="px-5 py-3 text-sm text-foreground">{q.customer?.name}</td>
-                        <td className="px-5 py-3 text-sm text-muted-foreground">{new Date(q.issueDate).toLocaleDateString('id-ID')}</td>
+                        <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(q.issueDate)}</td>
                         <td className="px-5 py-3 text-sm text-muted-foreground">
-                          {q.validUntil ? new Date(q.validUntil).toLocaleDateString('id-ID') : '-'}
+                          {q.validUntil ? formatDateDMY(q.validUntil) : '-'}
                         </td>
                         <td className="px-5 py-3 text-sm text-right font-medium text-foreground">{formatCurrency(q.total)}</td>
                         <td className="px-5 py-3 text-center">

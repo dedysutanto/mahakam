@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { useAuth } from '../lib/AuthContext'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, formatDateDMY } from '../lib/utils'
 import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Wallet, Tag, CheckSquare, Square } from 'lucide-react'
 
 interface InvoiceItem {
@@ -1113,8 +1113,8 @@ export default function Invoices() {
                         <span className="text-sm font-medium text-primary">{inv.invoiceNumber}</span>
                       </td>
                       <td className="px-5 py-3 text-sm text-foreground">{inv.customerName}</td>
-                      <td className="px-5 py-3 text-sm text-muted-foreground">{new Date(inv.issueDate).toLocaleDateString('id-ID')}</td>
-                      <td className="px-5 py-3 text-sm text-muted-foreground">{new Date(inv.dueDate).toLocaleDateString('id-ID')}</td>
+                      <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(inv.issueDate)}</td>
+                      <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(inv.dueDate)}</td>
                       <td className="px-5 py-3 text-sm text-right font-medium text-foreground">{formatCurrency(inv.total)}</td>
                       <td className="px-5 py-3 text-sm text-right text-muted-foreground">{formatCurrency(inv.amountPaid)}</td>
                       <td className="px-5 py-3 text-center">
@@ -1313,7 +1313,7 @@ export default function Invoices() {
                               {statusLabels[inv.status] || inv.status}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(inv.issueDate).toLocaleDateString('id-ID')}
+                              {formatDateDMY(inv.issueDate)}
                             </span>
                           </div>
                           <div className="text-sm text-foreground">{formatCurrency(inv.total)}</div>

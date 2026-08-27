@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, formatDateDMY } from '../lib/utils'
 import { ArrowLeft, Plus, Search, Receipt, Trash2, Pencil } from 'lucide-react'
 
 interface Expense {
@@ -382,7 +382,7 @@ export default function Expenses() {
                         '-'
                       )}
                     </td>
-                    <td className="px-5 py-3 text-sm text-muted-foreground">{new Date(exp.date).toLocaleDateString('id-ID')}</td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(exp.date)}</td>
                     <td className="px-5 py-3 text-sm text-right font-semibold text-destructive">{formatCurrency(exp.amount)}</td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../lib/AuthContext'
 import { Building2, Plus, ShieldCheck, Power, Pencil } from 'lucide-react'
+import { formatDateDMY } from '../lib/utils'
 
 interface Company {
   id: string
@@ -317,7 +318,7 @@ export default function SuperAdmin() {
                         <span className="text-sm font-medium text-foreground">{c.name}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Sejak {new Date(c.createdAt).toLocaleDateString('id-ID')}
+                        Sejak {formatDateDMY(c.createdAt)}
                       </p>
                     </td>
                     <td className="px-5 py-3 text-sm">

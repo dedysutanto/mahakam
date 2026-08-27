@@ -4,6 +4,7 @@ import { Settings, Upload, Building2, Hash, FileText, MapPin } from 'lucide-reac
 import { PROVINCES_ID, DEFAULT_COUNTRY } from '../lib/regions'
 import { useAuth } from '../lib/AuthContext'
 import { UserPlus, Power, Pencil, Trash2, Key, Package } from 'lucide-react'
+import { formatDateDMY } from '../lib/utils'
 
 const KINDS = [
   { key: 'invoice', label: 'Faktur', defaultPrefix: 'INV' },
@@ -983,7 +984,7 @@ export default function SettingsPage() {
                           {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString('id-ID') : 'Belum pernah'}
                         </td>
                         <td className="py-2 text-xs text-muted-foreground">
-                          {k.expiresAt ? new Date(k.expiresAt).toLocaleDateString('id-ID') : 'Selamanya'}
+                          {k.expiresAt ? formatDateDMY(k.expiresAt) : 'Selamanya'}
                         </td>
                         <td className="py-2 text-right">
                           <div className="flex items-center justify-end gap-1">

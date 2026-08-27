@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, formatDateDMY } from '../lib/utils'
 import { BarChart3, FileText, TrendingUp, ArrowLeft, Printer } from 'lucide-react'
 
 interface ReportData {
@@ -185,7 +185,7 @@ export default function Reports() {
                       <tbody>
                         {data.movements.map((m: any, i: number) => (
                           <tr key={i} className="border-b border-border">
-                            <td className="py-2 text-muted-foreground">{new Date(m.date).toLocaleDateString('id-ID')}</td>
+                            <td className="py-2 text-muted-foreground">{formatDateDMY(m.date)}</td>
                             <td className="py-2 text-foreground">{m.description}</td>
                             <td className="py-2 text-right text-success">{m.debit > 0 ? formatCurrency(m.debit) : '-'}</td>
                             <td className="py-2 text-right text-destructive">{m.credit > 0 ? formatCurrency(m.credit) : '-'}</td>
