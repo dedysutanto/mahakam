@@ -592,8 +592,8 @@ export default function Purchases() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">No. Pembelian</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vendor</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border">No. Pembelian</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px] sticky left-[150px] z-20 bg-muted backdrop-blur border-r border-border">Vendor</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
@@ -603,10 +603,10 @@ export default function Purchases() {
               <tbody className="divide-y divide-border">
                 {filtered.map((p) => (
                   <tr key={p.id} className="hover:bg-muted">
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3 min-w-[150px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border">
                       <span className="text-sm font-medium text-primary">{p.purchaseNumber}</span>
                     </td>
-                    <td className="px-5 py-3 text-sm text-foreground">{p.vendor?.name}</td>
+                    <td className="px-5 py-3 text-sm text-foreground min-w-[140px] sticky left-[150px] z-20 bg-card/95 backdrop-blur border-r border-border">{p.vendor?.name}</td>
                     <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(p.orderDate)}</td>
                     <td className="px-5 py-3 text-sm text-right font-medium text-foreground">{formatCurrency(p.total)}</td>
                     <td className="px-5 py-3 text-center">

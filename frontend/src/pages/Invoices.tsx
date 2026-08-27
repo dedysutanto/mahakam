@@ -1101,7 +1101,7 @@ export default function Invoices() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="px-4 py-3 w-10">
+                  <th className="px-4 py-3 w-10 min-w-[40px] max-w-[40px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border">
                     <input
                       type="checkbox"
                       checked={allSelectedVisible}
@@ -1109,8 +1109,8 @@ export default function Invoices() {
                       title="Pilih semua yang terlihat"
                     />
                   </th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">No. Faktur</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pelanggan</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-muted backdrop-blur border-r border-border">No. Faktur</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px] sticky left-[184px] z-20 bg-muted backdrop-blur border-r border-border">Pelanggan</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jatuh Tempo</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
@@ -1123,7 +1123,7 @@ export default function Invoices() {
                 {filtered.map((inv) => {
                   return (
                     <tr key={inv.id} className="hover:bg-muted cursor-pointer" onClick={() => openView(inv.id)}>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-3 min-w-[40px] max-w-[40px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           disabled={inv.status === 'draft'}
@@ -1132,10 +1132,10 @@ export default function Invoices() {
                           title={inv.status === 'draft' ? 'Faktur draft tidak bisa direkap' : 'Pilih untuk rekap'}
                         />
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-card/95 backdrop-blur border-r border-border">
                         <span className="text-sm font-medium text-primary">{inv.invoiceNumber}</span>
                       </td>
-                      <td className="px-5 py-3 text-sm text-foreground">{inv.customerName}</td>
+                      <td className="px-5 py-3 text-sm text-foreground min-w-[140px] sticky left-[184px] z-20 bg-card/95 backdrop-blur border-r border-border">{inv.customerName}</td>
                       <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(inv.issueDate)}</td>
                       <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(inv.dueDate)}</td>
                       <td className="px-5 py-3 text-sm text-right font-medium text-foreground">{formatCurrency(inv.total)}</td>

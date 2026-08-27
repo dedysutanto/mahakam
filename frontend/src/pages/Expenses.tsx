@@ -362,9 +362,9 @@ export default function Expenses() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">No. Pengeluaran</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Deskripsi</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vendor</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border">No. Pengeluaran</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[160px] sticky left-[150px] z-20 bg-muted backdrop-blur border-r border-border">Deskripsi</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px] sticky left-[310px] z-20 bg-muted backdrop-blur border-r border-border">Vendor</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Akun</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kategori</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
@@ -375,9 +375,9 @@ export default function Expenses() {
               <tbody className="divide-y divide-border">
                 {filtered.map((exp) => (
                   <tr key={exp.id} className="hover:bg-muted">
-                    <td className="px-5 py-3 text-sm font-mono text-muted-foreground">{exp.expenseNumber}</td>
-                    <td className="px-5 py-3 text-sm text-foreground">{exp.description}</td>
-                    <td className="px-5 py-3 text-sm text-muted-foreground">{exp.vendorName || '-'}</td>
+                    <td className="px-5 py-3 text-sm font-mono text-muted-foreground min-w-[150px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border">{exp.expenseNumber}</td>
+                    <td className="px-5 py-3 text-sm text-foreground min-w-[160px] sticky left-[150px] z-20 bg-card/95 backdrop-blur border-r border-border">{exp.description}</td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground min-w-[120px] sticky left-[310px] z-20 bg-card/95 backdrop-blur border-r border-border">{exp.vendorName || '-'}</td>
                     <td className="px-5 py-3 text-sm text-muted-foreground">
                       {exp.ledger.code} - {exp.ledger.name}
                     </td>

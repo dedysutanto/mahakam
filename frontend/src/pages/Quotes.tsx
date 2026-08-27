@@ -821,8 +821,8 @@ export default function Quotes() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-muted">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">No. Penawaran</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pelanggan</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[160px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border">No. Penawaran</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px] sticky left-[160px] z-20 bg-muted backdrop-blur border-r border-border">Pelanggan</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Berlaku Hingga</th>
                     <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
@@ -834,10 +834,10 @@ export default function Quotes() {
                   {filtered.map((q) => {
                     return (
                       <tr key={q.id} className="hover:bg-accent cursor-pointer" onClick={() => openView(q.id)}>
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-3 min-w-[160px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border">
                           <span className="text-sm font-medium text-primary">{q.quotationNumber}</span>
                         </td>
-                        <td className="px-5 py-3 text-sm text-foreground">{q.customer?.name}</td>
+                        <td className="px-5 py-3 text-sm text-foreground min-w-[140px] sticky left-[160px] z-20 bg-card/95 backdrop-blur border-r border-border">{q.customer?.name}</td>
                         <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(q.issueDate)}</td>
                         <td className="px-5 py-3 text-sm text-muted-foreground">
                           {q.validUntil ? formatDateDMY(q.validUntil) : '-'}
