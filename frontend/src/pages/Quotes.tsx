@@ -61,6 +61,7 @@ export default function Quotes() {
   const [returnToView, setReturnToView] = useState(false)
   useFormHistory(showForm, () => { setShowForm(false); setReturnToView(false) })
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [period, setPeriod] = useState('all')
   const [converting, setConverting] = useState(false)
 
@@ -124,6 +125,7 @@ export default function Quotes() {
     (q.quotationNumber.toLowerCase().includes(search.toLowerCase()) ||
     q.customer?.name?.toLowerCase().includes(search.toLowerCase()))
     && matchPeriod(q.issueDate, period)
+    && (statusFilter === 'all' || q.status === statusFilter)
   )
 
   // ---------- form helpers ----------
@@ -791,15 +793,27 @@ export default function Quotes() {
           {/* Period Filter */}
           <PeriodFilter value={period} onChange={setPeriod} />
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Cari penawaran/pelanggan..."
-              className="input pl-10"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Cari penawaran/pelanggan..."
+                className="input pl-10"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <select
+              className="input w-fit"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              {Object.entries(statusLabels).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
           </div>
 
           <div className="card overflow-hidden">

@@ -46,6 +46,7 @@ export default function Purchases() {
   const [editingId, setEditingId] = useState<string | null>(null)
   useFormHistory(showForm, () => { setShowForm(false); resetForm() })
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [period, setPeriod] = useState('all')
 
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -90,6 +91,7 @@ export default function Purchases() {
     (p.purchaseNumber.toLowerCase().includes(search.toLowerCase()) ||
     p.vendor?.name.toLowerCase().includes(search.toLowerCase()))
     && matchPeriod(p.orderDate, period)
+    && (statusFilter === 'all' || p.status === statusFilter)
   )
 
   // ---------- inline vendor creation ----------
@@ -562,15 +564,27 @@ export default function Purchases() {
         {/* Period Filter */}
         <PeriodFilter value={period} onChange={setPeriod} />
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-          <input
-            type="text"
-            placeholder="Cari pembelian/vendor..."
-            className="input pl-10"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+            <input
+              type="text"
+              placeholder="Cari pembelian/vendor..."
+              className="input pl-10"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="input w-fit"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">Semua Status</option>
+            {Object.entries(statusLabels).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
