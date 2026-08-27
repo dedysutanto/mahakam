@@ -95,13 +95,14 @@ export function requireScope(scope: string) {
     const { role, userId } = request.user || {}
     const scopes: string[] = request.tenantScopes || []
 
-    // API key — check scopes (no admin bypass)
+    // API key — check scopes (NO admin bypass, even though request.user.role is set to 'admin' in authHook).
+    // This must stay FIRST: the owner/admin role bypass below must never apply to API keys.
     if (userId === 'api-key') {
       if (scopes.includes(scope)) return
       return reply.code(403).send({ error: `Akses ditolak. API key butuh akses menu: ${scope}.` })
     }
 
-    // Owner/admin bypass
+    // Owner/admin bypass (JWT users only)
     if (role === 'owner' || role === 'admin') return
 
     // Staff — check scopes

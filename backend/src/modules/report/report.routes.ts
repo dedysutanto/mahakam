@@ -1,4 +1,4 @@
-import { authHook, validateTenantHook } from '../../middleware/auth'
+import { authHook, validateTenantHook, requireScope } from '../../middleware/auth'
 import { FastifyInstance } from 'fastify'
 import { prisma } from '../../utils/db'
 
@@ -10,7 +10,7 @@ export async function reportRoutes(app: FastifyInstance) {
   // LABA RUGI (INCOME STATEMENT)
   app.get('/laba-rugi', {
     schema: { tags: ['Pelaporan'], summary: 'Get income statement (laba rugi)', security: [{ BearerAuth: [] }] },
-    preValidation: [authHook(app), validateTenantHook(app)],
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('laporan')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
     const { dateFrom, dateTo } = request.query as any
@@ -81,7 +81,7 @@ export async function reportRoutes(app: FastifyInstance) {
   // NERACA (BALANCE SHEET)
   app.get('/neraca', {
     schema: { tags: ['Pelaporan'], summary: 'Get balance sheet (neraca)', security: [{ BearerAuth: [] }] },
-    preValidation: [authHook(app), validateTenantHook(app)],
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('laporan')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
     const { dateTo } = request.query as any
@@ -143,7 +143,7 @@ export async function reportRoutes(app: FastifyInstance) {
   // ARUS KAS (CASH FLOW)
   app.get('/arus-kas', {
     schema: { tags: ['Pelaporan'], summary: 'Get cash flow statement (arus kas)', security: [{ BearerAuth: [] }] },
-    preValidation: [authHook(app), validateTenantHook(app)],
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('laporan')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
     const { dateFrom, dateTo } = request.query as any
@@ -200,7 +200,7 @@ export async function reportRoutes(app: FastifyInstance) {
   // LAPORAN PENGELUARAN
   app.get('/pengeluaran', {
     schema: { tags: ['Pelaporan'], summary: 'Get expense report (pengeluaran)', security: [{ BearerAuth: [] }] },
-    preValidation: [authHook(app), validateTenantHook(app)],
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('laporan')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
     const { dateFrom, dateTo, category } = request.query as any
@@ -237,7 +237,7 @@ export async function reportRoutes(app: FastifyInstance) {
   // PIUTANG HUTANG (AGING)
   app.get('/piutang-hutang', {
     schema: { tags: ['Pelaporan'], summary: 'Get receivables and payables aging report', security: [{ BearerAuth: [] }] },
-    preValidation: [authHook(app), validateTenantHook(app)],
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('laporan')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
 

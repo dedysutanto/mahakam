@@ -13,7 +13,7 @@ Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first R
 - API keys: bcrypt-hashed, format `mk_live_<20 hex>`, per-module scopes, optional expiry (30d/90d/180d/1y/never). Admin-only CRUD. Shown once on creation.
 - PDF: PDFKit for invoices, quotations, recap billing statements. Direct download, no signed tokens.
 - Multi-tenant: shared infra, `tenantId` on all business tables. Roles: `owner`, `admin`, `member`. Super Admin (`isSuperAdmin`) manages tenants.
-- Per-menu scopes on TenantUser/ApiKey (`scopes String[]`): buku-besar, faktur, penawaran, pembelian, pengeluaran, produk, pelanggan, pajak, laporan, pengaturan. Owner/admin = implicit ALL scopes. Staff/API keys must have explicit scopes; backend enforces per route module; frontend hides menus without scope.
+- Per-menu scopes on TenantUser/ApiKey (`scopes String[]`): buku-besar, faktur, penawaran, pembelian, pengeluaran, produk, pelanggan, pajak, laporan, pengaturan. Owner/admin = implicit ALL scopes. Staff/API keys must have explicit scopes; backend enforces per route module on writes and on financial reads (reports, ledgers, invoices, quotes, purchases, expenses); reference-data reads (products, customers, taxes, settings) stay open to any authenticated tenant member because cross-module forms depend on them; dashboard is the post-login landing page and is open to all members. Frontend hides menus without scope.
 - Company admin cannot edit/delete the company's last active admin.
 - Deploy: Docker (standalone compose + swarm stack), postgres:16-alpine, nginx for frontend.
 - Out of scope: complex tax engine (basic rates only), AP three-way matching/approvals/SLA, blockchain/crypto.
@@ -49,7 +49,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V2: every tenant query filtered by `tenantId` from JWT/API key context; superadmin bypass only with explicit tenant selection.
 - V3: JWT token short-lived (24h), stored in localStorage, never in URL.
 - V4: invoice/PO number auto-generated from settings pattern; per-tenant sequence counter never reused.
-- V5: invoice status transitions draft→sent→paid, partial allowed; any non-paid→draft revert; else 422. Paid invoices not editable.
+- V5: invoice status transitions: manual `draft→sent` (forward-only via status endpoint, else 422); `partial`/`paid` derived automatically from payments (newPaid>0 → partial, newPaid≥total → paid); no revert to draft. Edits blocked unless status is `draft` (422). "overdue" is a derived display state (sent/partial past dueDate), never stored.
 - V6: default PPN from settings; per-line tax; total = subtotal + tax.
 - V7: money formatted as Rp Indonesian grouping.
 - V8: role/permission enforced server-side per endpoint, never client-trusted.
@@ -57,7 +57,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V10: Prisma migrations; PostgreSQL.
 - V11: Company admin restricted to own `tenantId`; cannot assign superadmin; cannot manage other tenants' users.
 - V12: Docker services reachable by service name; env vars for secrets, not committed. JWT_SECRET and POSTGRES_PASSWORD required (no defaults).
-- V13: PO status draft→sent→received→ordered; cancel any stage.
+- V13: PO status forward-only flow `draft→ordered→received` (one-way, backward moves rejected); no cancel status. Received state posts the HPP/Hutang journal entry once (idempotency guard scoped to tenant).
 - V14: paid invoices not editable (422); edit allowed otherwise.
 - V15: PDF generation via PDFKit; invoice PDF includes company info, bank details, items, totals, notes/terms.
 - V16: Recap billing statement aggregates non-draft invoices per customer into single PDF.
@@ -75,6 +75,10 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V28: Client-facing stats count `type='customer'` contacts only; vendors excluded.
 - V29: Rekap wizard includes exactly the invoices matching its active filters (status ∧ periode ∧ search); no separate selection state exists — anything not matching is excluded.
 - V30: Period filter is a shared UI component (button pills); filtering is client-side via `matchPeriod(dateStr, period)` over `issueDate`/`createdAt` fields; default period is "Semua" (all time).
+- V31: Financial-read endpoints (reports, invoices, quotations, purchases, expenses, ledgers, dashboard) and all write endpoints enforce the matching module scope; reference-data reads (products, customers, taxes, settings GET) require only authentication — they are shared by cross-module forms (e.g. a faktur-only staff member must load the product/customer/tax dropdowns to create an invoice).
+- V32: API keys never receive the owner/admin scope bypass in `requireScope` — the `userId === 'api-key'` check MUST run before the role check (ordering is load-bearing).
+- V33: Public auth endpoints are rate-limited: `/api/auth/login` and `/api/auth/register` 5 req/min per IP (abuse/brute-force protection) on top of the global 100 req/min.
+- V34: Register/seed data is fully tenant-scoped — the 18 default ledgers and the PPN tax created on registration carry `tenantId`; all journal-entry idempotency guards scope by `tenantId`.
 
 ## §T — tasks
 
@@ -136,6 +140,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T54 | x | rekap wizard client filter shows only clients with >1 non-draft invoice (excludes draft-only); search input added to wizard client list | V29 |
 | T55 | x | DatePicker double-input fix — removed `altInput` from flatpickr; use native `dateFormat: 'd/m/Y'`; pass Date objects to `setDate()` to avoid format mismatch | — |
 | T56 | x | invoice create/edit/view: added visible "Jatuh Tempo" label to due date field; restructured to match Quotes page pattern (each DatePicker has its own `<label>`) | — |
+| T57 | x | red-team hardening pass: register seed data tenant-scoped (B21); purchase journal guard tenant-scoped (B22); reports gated by `laporan` scope (B23); admin role check on tenant update (B24); register rate limit (B25); sanitized 500 error handler (B26); overdue derived client-side (B27); API-key scope bypass ordering documented (V32) | V5,V13,V31,V32,V33,V34,B21-B27 |
 
 ## §B — bugs
 
@@ -161,3 +166,10 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | B18 | 2026-08-27 | Laba Rugi computed `debit - credit` on revenue lines (credit-normal accounts), yielding negative revenue and positive expenses → always showed "Rugi"; dashboard had correct `credit - debit` for revenue | Flipped revenue to `credit - debit` in backend; frontend revenue line items match (T48) |
 | B19 | 2026-08-27 | DatePicker double input: flatpickr `altInput` creates sibling alt input; React re-render resets original input `type=hidden` → `type=text`, making both inputs visible | Removed `altInput`, use `dateFormat: 'd/m/Y'` directly; pass Date objects to `setDate()` (T55) |
 | B20 | 2026-08-27 | Invoice create/edit/view due date field had no visible `<label>` — only `placeholder="Jatuh Tempo"` which disappears once filled | Added "Jatuh Tempo" `<label>` above DatePicker; restructured to grid-cols-2 with individual labels (T56) |
+| B21 | 2026-08-27 | Registration seed data created 18 ledgers + 1 tax without `tenantId` — orphan rows never scoped to any tenant (V2 violation); superadmin tenant creation already did it correctly | `tenantId` added to every seed ledger and the PPN tax in register (T57) |
+| B22 | 2026-08-27 | Purchase "goods received" journal idempotency guard queried `journalEntry` by number only, without `tenantId` — cross-tenant match risk | Query scoped to `tenantId` (T57) |
+| B23 | 2026-08-27 | `/api/reports/*` had no scope guard — any staff (even zero-scope) could read all financial reports; dashboard & settings reads similarly unguarded | Reports gated behind `requireScope('laporan')`; reference-data reads (products/customers/taxes/settings GET) documented as intentionally open for cross-module forms (V31) |
+| B24 | 2026-08-27 | `PUT /api/tenants/:id` had no admin role check — any tenant member could rename the company | Admin role check added via `request.tenantRole` (T57) |
+| B25 | 2026-08-27 | `POST /api/auth/register` had no rate limit — mass account creation possible | 5 req/min per IP added, matching login (V33) |
+| B26 | 2026-08-27 | No global error handler — Prisma P20xx errors leaked field/model names to clients in 500 responses | `setErrorHandler` sanitizes Prisma-coded 500s; business error messages preserved (T57) |
+| B27 | 2026-08-27 | `overdue` status never stored by backend — "Jatuh Tempo" filter & Terlambat badge were permanently dead | Frontend derives overdue from sent/partial + past dueDate in Invoices filter/badge and Dashboard (V5) |

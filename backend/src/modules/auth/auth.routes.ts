@@ -6,6 +6,12 @@ import bcrypt from 'bcryptjs'
 export async function authRoutes(app: FastifyInstance) {
   // REGISTER
   app.post('/register', {
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: '1 minute',
+      },
+    },
     schema: {
       body: {
         type: 'object',
@@ -41,29 +47,29 @@ export async function authRoutes(app: FastifyInstance) {
 
       await tx.ledger.createMany({
         data: [
-          { code: '1-1000', name: 'Kas', type: 'asset', isSystem: true },
-          { code: '1-1100', name: 'Bank', type: 'asset', isSystem: true },
-          { code: '1-1200', name: 'Piutang Usaha', type: 'asset', isSystem: true },
-          { code: '1-2000', name: 'Persediaan', type: 'asset', isSystem: true },
-          { code: '1-3000', name: 'Aset Tetap', type: 'asset', isSystem: true },
-          { code: '2-1000', name: 'Hutang Usaha', type: 'liability', isSystem: true },
-          { code: '2-2000', name: 'Utang Gaji', type: 'liability', isSystem: true },
-          { code: '2-3000', name: 'Utang Pajak', type: 'liability', isSystem: true },
-          { code: '3-1000', name: 'Modal Penyertaan', type: 'equity', isSystem: true },
-          { code: '3-2000', name: 'Laba Ditahan', type: 'equity', isSystem: true },
-          { code: '4-1000', name: 'Pendapatan Penjualan', type: 'revenue', isSystem: true },
-          { code: '4-2000', name: 'Pendapatan Jasa', type: 'revenue', isSystem: true },
-          { code: '5-1000', name: 'Harga Pokok Penjualan', type: 'expense', isSystem: true },
-          { code: '5-2000', name: 'Beban Gaji', type: 'expense', isSystem: true },
-          { code: '5-3000', name: 'Beban Sewa', type: 'expense', isSystem: true },
-          { code: '5-4000', name: 'Beban Listrik & Air', type: 'expense', isSystem: true },
-          { code: '5-5000', name: 'Beban Administrasi', type: 'expense', isSystem: true },
-          { code: '5-6000', name: 'Beban Penyusutan', type: 'expense', isSystem: true },
+          { tenantId: tenant.id, code: '1-1000', name: 'Kas', type: 'asset', isSystem: true },
+          { tenantId: tenant.id, code: '1-1100', name: 'Bank', type: 'asset', isSystem: true },
+          { tenantId: tenant.id, code: '1-1200', name: 'Piutang Usaha', type: 'asset', isSystem: true },
+          { tenantId: tenant.id, code: '1-2000', name: 'Persediaan', type: 'asset', isSystem: true },
+          { tenantId: tenant.id, code: '1-3000', name: 'Aset Tetap', type: 'asset', isSystem: true },
+          { tenantId: tenant.id, code: '2-1000', name: 'Hutang Usaha', type: 'liability', isSystem: true },
+          { tenantId: tenant.id, code: '2-2000', name: 'Utang Gaji', type: 'liability', isSystem: true },
+          { tenantId: tenant.id, code: '2-3000', name: 'Utang Pajak', type: 'liability', isSystem: true },
+          { tenantId: tenant.id, code: '3-1000', name: 'Modal Penyertaan', type: 'equity', isSystem: true },
+          { tenantId: tenant.id, code: '3-2000', name: 'Laba Ditahan', type: 'equity', isSystem: true },
+          { tenantId: tenant.id, code: '4-1000', name: 'Pendapatan Penjualan', type: 'revenue', isSystem: true },
+          { tenantId: tenant.id, code: '4-2000', name: 'Pendapatan Jasa', type: 'revenue', isSystem: true },
+          { tenantId: tenant.id, code: '5-1000', name: 'Harga Pokok Penjualan', type: 'expense', isSystem: true },
+          { tenantId: tenant.id, code: '5-2000', name: 'Beban Gaji', type: 'expense', isSystem: true },
+          { tenantId: tenant.id, code: '5-3000', name: 'Beban Sewa', type: 'expense', isSystem: true },
+          { tenantId: tenant.id, code: '5-4000', name: 'Beban Listrik & Air', type: 'expense', isSystem: true },
+          { tenantId: tenant.id, code: '5-5000', name: 'Beban Administrasi', type: 'expense', isSystem: true },
+          { tenantId: tenant.id, code: '5-6000', name: 'Beban Penyusutan', type: 'expense', isSystem: true },
         ],
       })
 
       await tx.tax.create({
-        data: { name: 'PPN', rate: 11, isDefault: true },
+        data: { tenantId: tenant.id, name: 'PPN', rate: 11, isDefault: true },
       })
 
       return { user, tenant }

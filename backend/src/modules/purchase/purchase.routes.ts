@@ -206,7 +206,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
     // Post journal when goods are received: Debit HPP / Credit Hutang Usaha
     if (status === 'received') {
       const journalNumber = `JE-PUR-${updated.purchaseNumber}`
-      const alreadyPosted = await prisma.journalEntry.findFirst({ where: { journalNumber } })
+      const alreadyPosted = await prisma.journalEntry.findFirst({ where: { tenantId, journalNumber } })
       if (!alreadyPosted) {
         const [expenseLedger, liabilityLedger] = await Promise.all([
           prisma.ledger.findFirst({

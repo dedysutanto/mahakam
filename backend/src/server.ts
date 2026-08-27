@@ -22,13 +22,25 @@ import { superAdminRoutes } from './modules/superadmin/superadmin.routes'
 import { taxRoutes } from './modules/tax/tax.routes'
 import { join } from 'path'
 
-const APP_VERSION = '1.3.34'
+const APP_VERSION = '1.3.35'
 
 export async function createApp() {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL || 'info',
     },
+  })
+
+  // Sanitize Prisma/internal errors — never leak field/model names or stack traces in 500 responses.
+  // Business errors thrown as `new Error('...')` keep their message so the frontend can show it.
+  app.setErrorHandler((error, request, reply) => {
+    const statusCode = (error as any).statusCode || 500
+    const isInternal = statusCode >= 500 && (typeof (error as any).code === 'string' && /^P\d+/.test((error as any).code))
+    if (isInternal) {
+      request.log.error(error)
+      return reply.status(500).send({ message: 'Terjadi kesalahan internal' })
+    }
+    return reply.status(statusCode).send({ message: error.message })
   })
 
   // Register plugins

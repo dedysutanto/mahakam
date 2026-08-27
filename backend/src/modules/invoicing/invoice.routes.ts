@@ -217,7 +217,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
     const invoice = await prisma.invoice.findFirst({ where: { id, tenantId } })
     if (!invoice) throw new Error('Faktur tidak ditemukan')
-    if (invoice.status !== 'draft') throw new Error('Hanya faktur berstatus Draft yang dapat diubah')
+    if (invoice.status !== 'draft') throw Object.assign(new Error('Hanya faktur berstatus Draft yang dapat diubah'), { statusCode: 422 })
 
     const customer = await prisma.customer.findFirst({ where: { id: customerId, tenantId } })
     if (!customer) throw new Error('Pelanggan tidak ditemukan')

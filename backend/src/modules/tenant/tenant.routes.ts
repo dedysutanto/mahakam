@@ -356,6 +356,8 @@ export async function tenantRoutes(app: FastifyInstance) {
     const { id } = request.params as any
     const { name, subdomain } = request.body as any
 
+    if (!isAdminRole(request.tenantRole)) throw new Error('Hanya admin perusahaan yang dapat mengubah data perusahaan')
+
     await prisma.tenant.update({
       where: { id },
       data: { name, subdomain },

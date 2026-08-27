@@ -47,6 +47,16 @@ const statusLabels: Record<string, string> = {
   overdue: 'Jatuh Tempo',
 }
 
+// Derive 'overdue' from sent/partial invoices past their due date (backend never stores this status).
+const effectiveStatus = (inv: { status: string; dueDate: string }) =>
+  (inv.status === 'sent' || inv.status === 'partial') && new Date(inv.dueDate) < startOfToday() ? 'overdue' : inv.status
+
+function startOfToday() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
 const toDateInput = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -228,7 +238,7 @@ export default function Invoices() {
     const matchSearch =
       inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
       inv.customerName.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = statusFilter === 'all' || inv.status === statusFilter
+    const matchStatus = statusFilter === 'all' || effectiveStatus(inv) === statusFilter
     return matchSearch && matchStatus && matchPeriod(inv.issueDate, period)
   })
 
@@ -1149,14 +1159,14 @@ export default function Invoices() {
                           className={`badge ${
                             inv.status === 'paid'
                               ? 'badge-success'
-                              : inv.status === 'overdue'
+                              : effectiveStatus(inv) === 'overdue'
                               ? 'badge-destructive'
                               : inv.status === 'sent'
                               ? 'badge-info'
                               : 'badge-default'
                           }`}
                         >
-                          {statusLabels[inv.status] || inv.status}
+                          {statusLabels[effectiveStatus(inv)] || inv.status}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">

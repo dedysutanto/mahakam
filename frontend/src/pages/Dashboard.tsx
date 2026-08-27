@@ -29,6 +29,11 @@ const PERIOD_OPTIONS = [
   { key: 'all', label: 'Semua' },
 ]
 
+// sent/partial invoice past its due date is treated as overdue (backend never stores this status)
+function overdue(inv: { status: string; dueDate: string }) {
+  return new Date(inv.dueDate) < new Date()
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
@@ -215,16 +220,24 @@ export default function Dashboard() {
                       className={`text-xs px-2 py-0.5 rounded-full ${
                         inv.status === 'paid'
                           ? 'bg-success/15 text-success'
+                          : (inv.status === 'sent' || inv.status === 'partial') && overdue(inv)
+                          ? 'bg-red-100 text-red-700'
                           : inv.status === 'sent'
                           ? 'bg-accent text-primary'
                           : inv.status === 'partial'
                           ? 'bg-amber-100 text-amber-700'
-                          : inv.status === 'overdue'
-                          ? 'bg-red-100 text-red-700'
                           : 'bg-muted text-muted-foreground'
                       }`}
                     >
-                      {inv.status === 'paid' ? 'Lunas' : inv.status === 'sent' ? 'Terkirim' : inv.status === 'partial' ? 'Sebagian' : inv.status === 'overdue' ? 'Terlambat' : 'Draft'}
+                      {(inv.status === 'sent' || inv.status === 'partial') && overdue(inv)
+                        ? 'Terlambat'
+                        : inv.status === 'paid'
+                        ? 'Lunas'
+                        : inv.status === 'sent'
+                        ? 'Terkirim'
+                        : inv.status === 'partial'
+                        ? 'Sebagian'
+                        : 'Draft'}
                     </span>
                   </div>
                 </div>
