@@ -1123,7 +1123,7 @@ export default function Invoices() {
                       title="Pilih semua yang terlihat"
                     />
                   </th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-muted backdrop-blur border-r border-border">No. Faktur</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-muted backdrop-blur border-r border-border overflow-hidden">No. Faktur</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px]">Pelanggan</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jatuh Tempo</th>
@@ -1146,8 +1146,8 @@ export default function Invoices() {
                           title={inv.status === 'draft' ? 'Faktur draft tidak bisa direkap' : 'Pilih untuk rekap'}
                         />
                       </td>
-                      <td className="px-5 py-3 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-card/95 backdrop-blur border-r border-border">
-                        <span className="text-sm font-medium text-primary">{inv.invoiceNumber}</span>
+                      <td className="px-5 py-3 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-card/95 backdrop-blur border-r border-border overflow-hidden">
+                        <span className="text-sm font-medium text-primary truncate block">{inv.invoiceNumber}</span>
                       </td>
                       <td className="px-5 py-3 text-sm text-foreground min-w-[140px]">{inv.customerName}</td>
                       <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(inv.issueDate)}</td>
