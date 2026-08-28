@@ -99,6 +99,7 @@ export default function Invoices() {
   const [unitOptions, setUnitOptions] = useState<string[]>(DEFAULT_UNITS)
   const defaultUnit = () => (unitOptions.includes('pcs') ? 'pcs' : unitOptions[0] || 'pcs')
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, unit: 'pcs', description: '' })
+  const [nextNumber, setNextNumber] = useState('')
 
   const emptyForm = () => {
     const now = new Date()
@@ -431,6 +432,7 @@ export default function Invoices() {
     setShowForm(false)
     setEditingInvoice(null)
     setFormMode('create')
+    setNextNumber('')
     const def = taxes.find((t) => t.isDefault)
     setFormData({ ...emptyForm(), taxId: def?.id || '' })
   }
@@ -626,6 +628,7 @@ export default function Invoices() {
                 const def = taxes.find((t) => t.isDefault)
                 setFormData({ ...emptyForm(), taxId: def?.id || '' })
                 setShowForm(true)
+                fetch('/api/invoices/next-number').then(r => r.json()).then(d => setNextNumber(d.nextNumber || '')).catch(() => setNextNumber(''))
               }}
               className="btn btn-primary"
             >
@@ -715,7 +718,7 @@ export default function Invoices() {
                     disabled={isView}
                     value={formData.invoiceNumber}
                     onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                    placeholder="Kosongkan untuk otomatis"
+                    placeholder={nextNumber || 'Kosongkan untuk otomatis'}
                   />
                 </div>
                 <div>

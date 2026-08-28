@@ -86,6 +86,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V39: `{ABBR}` token in numbering formats resolves to the `company_abbreviation` tenant setting (3-char max). If abbreviation is empty, resolves to empty string — no special handling; preview shows the gap. Abbreviation is optional, auto-suggested from company name (first letters of significant words, skipping PT/CV/UD/TBK).
 - V40: Invoice items support both catalog products (`productId` linked) and manual items (`productId: null`, `isManual: true`). Manual items entered via "Tambah Item Non Product" button; appear as regular line items in the grid and PDF. Product items start with a product dropdown; manual items start with a free-text input. Per-row "📦" button switches to product mode; per-row "✕" button switches back to manual mode. `isManual` is frontend-only, stripped before submission.
 - V41: Invoice items carry a `unit` field (DB column `unit VARCHAR(20)` nullable on `invoice_items`). For product items, unit is auto-filled from `Product.unit`. For manual/non-product items, unit is user-selected from the tenant's unit list (default `"unit"`). Product items show unit as read-only; manual items show a unit dropdown. Unit is rendered in PDF as `quantity unit` (e.g. `1 unit`, `5 pcs`).
+- V42: Create-invoice form shows the next auto-generated number as a suggestive placeholder in the No. Faktur field. `GET /api/invoices/next-number` calls `generateDocNumber` and returns the actual next number based on the format template and existing invoices. Placeholder is fetched when the create form opens and cleared on close. The actual number is generated server-side at create time (max-existing + 1 with collision loop).
 
 ## §T — tasks
 
@@ -153,6 +154,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T60 | x | Company abbreviation: `{ABBR}` token in numbering formats; smart suggestion from company name (skip PT/CV/UD/TBK, first letters); abbreviation input in Nama Perusahaan card; saved via settings endpoint | V39,B34 |
 | T61 | x | Non-product invoice items: "Tambah Item Non Product" button; `isManual` flag per item; product dropdown vs free-text input; per-row mode switching (📦/✕); `isManual` stripped before API submission | V40,B35 |
 | T62 | x | Invoice item unit field: added `unit VARCHAR(20)` to `InvoiceItem` schema; backend auto-fills unit from `Product.unit` for product items, accepts from request body for manual items (default `"unit"`); PDF renders `item.unit \|\| item.product?.unit`; frontend adds unit column to item grid (read-only for product, dropdown for manual); unit dropdown uses tenant's `product_units` list | V41,B36 |
+| T63 | x | Suggestive auto-number placeholder: `GET /api/invoices/next-number` endpoint returns actual next number from `generateDocNumber`; frontend fetches on create form open and shows as No. Faktur placeholder; cleared on form close; actual number generated server-side at create time | V42 |
 
 ## §B — bugs
 

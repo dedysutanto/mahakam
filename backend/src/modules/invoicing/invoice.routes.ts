@@ -70,6 +70,21 @@ export async function invoiceRoutes(app: FastifyInstance) {
     return invoice
   })
 
+  // NEXT INVOICE NUMBER (suggestive placeholder)
+  app.get('/next-number', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Get next auto-generated invoice number',
+      description: 'Returns the next invoice number based on the numbering format and existing invoices. For placeholder use only — the actual number is generated at create time.',
+      security: [{ BearerAuth: [] }],
+    },
+    preValidation: [authHook(app), requireScope('faktur')],
+  }, async (request: any) => {
+    const { tenantId } = request.user as any
+    const nextNumber = await generateDocNumber('invoice', tenantId)
+    return { nextNumber }
+  })
+
   // CREATE INVOICE
   app.post('/', {
     schema: {
