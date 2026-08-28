@@ -1,18 +1,55 @@
 import { prisma } from "./db"
 
-// Sequential document-number generation.
+// Sequential document-number generation with flexible format templates.
 //
-// Never derive sequences from row counts: deleting a mid-series row makes
-// count+1 collide with an existing number. Instead take the highest existing
-// sequence for this tenant+prefix and step past it, skipping anything taken.
+// Format tokens:
+//   {000} / {00X} / {SEQ} / {SEQ:N}  — sequence number (width = digit count)
+//   {YYYY}  — 4-digit year            {YY}  — 2-digit year
+//   {MM}    — month zero-padded        {RM}  — month Roman numeral (I–XII)
+//   {DD}    — day zero-padded
+//
+// Everything else in the template is literal text.
+// Monthly reset: include {MM} or {RM} in the format.
+// Yearly reset: omit month tokens.
+
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
 function pad(n: number, width = 4): string {
   return String(n).padStart(width, '0')
 }
 
-function extractSeq(docNumber: string, prefix: string): number {
-  const n = parseInt(docNumber.slice(prefix.length), 10)
-  return isNaN(n) ? 0 : n
+function toRoman(n: number): string {
+  return ROMAN[n - 1] || String(n)
+}
+
+function renderDateTokens(template: string, date: Date): string {
+  return template
+    .replace(/\{YYYY\}/g, String(date.getFullYear()))
+    .replace(/\{YY\}/g, String(date.getFullYear()).slice(-2))
+    .replace(/\{MM\}/g, String(date.getMonth() + 1).padStart(2, '0'))
+    .replace(/\{RM\}/g, toRoman(date.getMonth() + 1))
+    .replace(/\{DD\}/g, String(date.getDate()).padStart(2, '0'))
+}
+
+function parseSequenceToken(format: string): { token: string; width: number; prefix: string; suffix: string } | null {
+  const match = format.match(/\{(0+|X+|SEQ(?::\d+)?)\}/)
+  if (!match) return null
+
+  const token = match[0]
+  let width = 4
+  if (match[1] === 'SEQ') {
+    width = 4
+  } else if (match[1].startsWith('SEQ:')) {
+    width = parseInt(match[1].slice(4)) || 4
+  } else {
+    width = match[1].length
+  }
+
+  const idx = format.indexOf(token)
+  const prefix = format.slice(0, idx)
+  const suffix = format.slice(idx + token.length)
+
+  return { token, width, prefix, suffix }
 }
 
 async function getSetting(tenantId: string, key: string, fallback: string): Promise<string> {
@@ -21,6 +58,20 @@ async function getSetting(tenantId: string, key: string, fallback: string): Prom
     select: { value: true },
   })
   return row?.value || fallback
+}
+
+const DEFAULTS: Record<string, string> = {
+  invoice: '{000}/INV/{RM}/{YYYY}',
+  expense: '{000}/EXP/{RM}/{YYYY}',
+  purchase: '{000}/PUR/{RM}/{YYYY}',
+  quotation: '{000}/QUO/{RM}/{YYYY}',
+}
+
+const LEGACY_PREFIX: Record<string, string> = {
+  invoice: 'INV',
+  expense: 'EXP',
+  purchase: 'PUR',
+  quotation: 'QUO',
 }
 
 export async function generateDocNumber(
@@ -33,39 +84,67 @@ export async function generateDocNumber(
     purchase: { model: prisma.purchase, field: 'purchaseNumber' },
     quotation: { model: prisma.quotation, field: 'quotationNumber' },
   }
-  const defaults: Record<string, { prefix: string; year: string; digits: string }> = {
-    invoice: { prefix: 'INV', year: 'true', digits: '4' },
-    expense: { prefix: 'EXP', year: 'true', digits: '4' },
-    purchase: { prefix: 'PUR', year: 'true', digits: '4' },
-    quotation: { prefix: 'QUO', year: 'true', digits: '4' },
-  }
 
   const { model, field } = delegates[kind]
-  const d = defaults[kind]
 
-  const prefix = await getSetting(tenantId, `numbering_${kind}_prefix`, d.prefix)
-  const includeYear = (await getSetting(tenantId, `numbering_${kind}_year`, d.year)) === 'true'
-  const digits = parseInt(await getSetting(tenantId, `numbering_${kind}_digits`, d.digits), 10) || 4
+  // 1. Read format from settings
+  let format = await getSetting(tenantId, `numbering_${kind}_format`, '')
 
-  const yearPart = includeYear ? `${new Date().getFullYear()}-` : ''
-  const seqPrefix = `${prefix}-${yearPart}`
+  // 2. Backward compat: if no format setting, construct from legacy prefix/year/digits
+  if (!format) {
+    const prefix = await getSetting(tenantId, `numbering_${kind}_prefix`, LEGACY_PREFIX[kind])
+    const includeYear = (await getSetting(tenantId, `numbering_${kind}_year`, 'true')) === 'true'
+    const digits = parseInt(await getSetting(tenantId, `numbering_${kind}_digits`, '4'), 10) || 4
+    const yearPart = includeYear ? '-{YYYY}-' : '-'
+    const seqPad = '{' + '0'.repeat(digits) + '}'
+    format = `${prefix}${yearPart}${seqPad}`
+  }
 
+  // 3. Fall back to new default if still empty
+  if (!format) format = DEFAULTS[kind]
+
+  // 4. Parse sequence token
+  const parsed = parseSequenceToken(format)
+  if (!parsed) {
+    // No sequence token — return a simple fallback
+    return `${LEGACY_PREFIX[kind]}-0001`
+  }
+
+  // 5. Render date tokens in prefix and suffix
+  const now = new Date()
+  const renderedPrefix = renderDateTokens(parsed.prefix, now)
+  const renderedSuffix = renderDateTokens(parsed.suffix, now)
+
+  // 6. Find the highest existing number with this context
   const last = await model.findFirst({
-    where: { tenantId, [field]: { startsWith: seqPrefix } },
+    where: {
+      tenantId,
+      [field]: { startsWith: renderedPrefix, endsWith: renderedSuffix },
+    },
     orderBy: { [field]: 'desc' },
     select: { [field]: true },
   })
 
-  let seq = last ? extractSeq(last[field], seqPrefix) + 1 : 1
+  // 7. Extract and increment sequence
+  let seq = 1
+  if (last) {
+    const seqStr = last[field].slice(
+      renderedPrefix.length,
+      last[field].length - (renderedSuffix.length || 0),
+    )
+    seq = (parseInt(seqStr, 10) || 0) + 1
+  }
 
+  // 8. Collision loop
+  const candidate = () => `${renderedPrefix}${pad(seq, parsed.width)}${renderedSuffix}`
   while (
     await model.findFirst({
-      where: { tenantId, [field]: `${seqPrefix}${pad(seq, digits)}` },
+      where: { tenantId, [field]: candidate() },
       select: { id: true },
     })
   ) {
     seq++
   }
 
-  return `${seqPrefix}${pad(seq, digits)}`
+  return candidate()
 }

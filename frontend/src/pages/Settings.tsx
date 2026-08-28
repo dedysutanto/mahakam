@@ -7,10 +7,10 @@ import { UserPlus, Power, Pencil, Trash2, Key, Package } from 'lucide-react'
 import { formatDateDMY } from '../lib/utils'
 
 const KINDS = [
-  { key: 'invoice', label: 'Faktur', defaultPrefix: 'INV' },
-  { key: 'quotation', label: 'Penawaran', defaultPrefix: 'QUO' },
-  { key: 'expense', label: 'Pengeluaran', defaultPrefix: 'EXP' },
-  { key: 'purchase', label: 'Pembelian', defaultPrefix: 'PUR' },
+  { key: 'invoice', label: 'Faktur', defaultFormat: '{000}/INV/{RM}/{YYYY}' },
+  { key: 'quotation', label: 'Penawaran', defaultFormat: '{000}/QUO/{RM}/{YYYY}' },
+  { key: 'expense', label: 'Pengeluaran', defaultFormat: '{000}/EXP/{RM}/{YYYY}' },
+  { key: 'purchase', label: 'Pembelian', defaultFormat: '{000}/PUR/{RM}/{YYYY}' },
 ]
 
 const SCOPE_OPTIONS = [
@@ -33,8 +33,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
-  // Numbering config
-  const [numbering, setNumbering] = useState<Record<string, Record<string, string>>>({})
+  // Numbering config (format templates)
+  const [numbering, setNumbering] = useState<Record<string, string>>({})
   const [numberingDirty, setNumberingDirty] = useState(false)
 
   // Template notes
@@ -285,13 +285,9 @@ export default function SettingsPage() {
     fetch('/api/tenants/settings')
       .then((r) => r.json())
       .then((data) => {
-        const n: Record<string, Record<string, string>> = {}
+        const n: Record<string, string> = {}
         for (const k of KINDS) {
-          n[k.key] = {
-            prefix: data[`numbering_${k.key}_prefix`] || k.defaultPrefix,
-            year: data[`numbering_${k.key}_year`] ?? 'true',
-            digits: data[`numbering_${k.key}_digits`] || '4',
-          }
+          n[k.key] = data[`numbering_${k.key}_format`] || ''
         }
         setNumbering(n)
         setTemplateNote(data.invoice_template_note || '')
@@ -415,11 +411,8 @@ export default function SettingsPage() {
     try {
       const payload: Record<string, string> = {}
       for (const k of KINDS) {
-        const n = numbering[k.key]
-        if (!n) continue
-        payload[`numbering_${k.key}_prefix`] = n.prefix.trim() || k.defaultPrefix
-        payload[`numbering_${k.key}_year`] = n.year
-        payload[`numbering_${k.key}_digits`] = n.digits
+        const fmt = numbering[k.key]?.trim() || k.defaultFormat
+        payload[`numbering_${k.key}_format`] = fmt
       }
       const res = await fetch('/api/tenants/settings', {
         method: 'PUT',
@@ -519,22 +512,27 @@ export default function SettingsPage() {
     }
   }
 
-  const updateNumbering = (kind: string, field: string, value: string) => {
-    setNumbering((prev) => ({
-      ...prev,
-      [kind]: { ...prev[kind], [field]: value },
-    }))
+  const updateNumbering = (kind: string, value: string) => {
+    setNumbering((prev) => ({ ...prev, [kind]: value }))
     setNumberingDirty(true)
   }
 
+  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+
   const previewNumber = (kind: string) => {
-    const n = numbering[kind]
-    if (!n) return '...'
-    const prefix = n.prefix.trim() || KINDS.find((k) => k.key === kind)?.defaultPrefix || 'DOC'
-    const yearPart = n.year === 'true' ? `${new Date().getFullYear()}-` : ''
-    const digits = parseInt(n.digits) || 4
-    const seq = '1'.padStart(digits, '0')
-    return `${prefix}-${yearPart}${seq}`
+    const fmt = numbering[kind]?.trim() || KINDS.find((k) => k.key === kind)?.defaultFormat || '{000}/DOC/{RM}/{YYYY}'
+    const now = new Date()
+    const render = (s: string) => s
+      .replace(/\{YYYY\}/g, String(now.getFullYear()))
+      .replace(/\{YY\}/g, String(now.getFullYear()).slice(-2))
+      .replace(/\{MM\}/g, String(now.getMonth() + 1).padStart(2, '0'))
+      .replace(/\{RM\}/g, ROMAN[now.getMonth()] || String(now.getMonth() + 1))
+      .replace(/\{DD\}/g, String(now.getDate()).padStart(2, '0'))
+    const seqMatch = fmt.match(/\{(0+|X+|SEQ(?::\d+)?)\}/)
+    if (!seqMatch) return render(fmt)
+    const width = seqMatch[1] === 'SEQ' ? 4 : seqMatch[1].startsWith('SEQ:') ? parseInt(seqMatch[1].slice(4)) || 4 : seqMatch[1].length
+    const seq = '1'.padStart(width, '0')
+    return render(fmt.replace(seqMatch[0], seq))
   }
 
   return (
@@ -1087,50 +1085,29 @@ export default function SettingsPage() {
             <Hash className="w-5 h-5 text-muted-foreground" />
             <h2 className="font-semibold text-foreground">Format Nomor Dokumen</h2>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Atur prefix, format tahun, dan jumlah digit untuk nomor dokumen otomatis.
+          <p className="text-sm text-muted-foreground mb-2">
+            Gunakan token untuk format fleksibel. Nomor urut di-reset otomatis saat konteks berubah (bulan/tahun).
           </p>
+          <div className="text-xs text-muted-foreground/70 mb-4 flex flex-wrap gap-x-4 gap-y-1">
+            <span><code className="font-mono bg-muted px-1 rounded">{'{000}'}</code> nomor urut</span>
+            <span><code className="font-mono bg-muted px-1 rounded">{'{YYYY}'}</code> tahun</span>
+            <span><code className="font-mono bg-muted px-1 rounded">{'{YY}'}</code> 2 digit</span>
+            <span><code className="font-mono bg-muted px-1 rounded">{'{MM}'}</code> bulan (01-12)</span>
+            <span><code className="font-mono bg-muted px-1 rounded">{'{RM}'}</code> bulan (I-XII)</span>
+            <span><code className="font-mono bg-muted px-1 rounded">{'{DD}'}</code> tanggal</span>
+          </div>
 
           <div className="space-y-4">
             {KINDS.map((k) => (
               <div key={k.key} className="border border-border rounded-lg p-4">
-                <div className="text-sm font-medium text-foreground mb-3">{k.label}</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Prefix</label>
-                    <input
-                      type="text"
-                      className="input text-sm"
-                      value={numbering[k.key]?.prefix ?? k.defaultPrefix}
-                      onChange={(e) => updateNumbering(k.key, 'prefix', e.target.value)}
-                      placeholder={k.defaultPrefix}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Sertakan Tahun</label>
-                    <select
-                      className="input text-sm"
-                      value={numbering[k.key]?.year ?? 'true'}
-                      onChange={(e) => updateNumbering(k.key, 'year', e.target.value)}
-                    >
-                      <option value="true">Ya (2026)</option>
-                      <option value="false">Tidak</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Digit</label>
-                    <select
-                      className="input text-sm"
-                      value={numbering[k.key]?.digits ?? '4'}
-                      onChange={(e) => updateNumbering(k.key, 'digits', e.target.value)}
-                    >
-                      <option value="3">3 (001)</option>
-                      <option value="4">4 (0001)</option>
-                      <option value="5">5 (00001)</option>
-                      <option value="6">6 (000001)</option>
-                    </select>
-                  </div>
-                </div>
+                <div className="text-sm font-medium text-foreground mb-2">{k.label}</div>
+                <input
+                  type="text"
+                  className="input text-sm font-mono"
+                  value={numbering[k.key] ?? ''}
+                  onChange={(e) => updateNumbering(k.key, e.target.value)}
+                  placeholder={k.defaultFormat}
+                />
                 <div className="mt-2 text-xs text-muted-foreground/70">
                   Contoh: <span className="font-mono text-muted-foreground">{previewNumber(k.key)}</span>
                 </div>
