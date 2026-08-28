@@ -119,10 +119,13 @@ export async function invoiceRoutes(app: FastifyInstance) {
     const customer = await prisma.customer.findFirst({ where: { id: customerId, tenantId } })
     if (!customer) throw new Error('Pelanggan tidak ditemukan')
 
+    // Validate products and cache their data for unit auto-fill
+    const productMap = new Map<string, any>()
     for (const item of items) {
       if (item.productId) {
         const product = await prisma.product.findFirst({ where: { id: item.productId, tenantId } })
         if (!product) throw new Error('Produk tidak ditemukan')
+        productMap.set(item.productId, product)
       }
     }
 
@@ -154,8 +157,10 @@ export async function invoiceRoutes(app: FastifyInstance) {
 const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
       const lineTotal = Number(item.quantity || 0) * Number(item.unitPrice || 0) * (1 - discPct / 100)
       subtotal += lineTotal
+      const product = item.productId ? productMap.get(item.productId) : null
       return {
         productId: item.productId || null,
+        unit: item.unit || product?.unit || 'unit',
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -230,6 +235,16 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 
     if (!Array.isArray(items) || items.length === 0) throw new Error('Minimal satu item diperlukan')
 
+    // Validate products and cache their data for unit auto-fill
+    const productMap = new Map<string, any>()
+    for (const item of items) {
+      if (item.productId) {
+        const product = await prisma.product.findFirst({ where: { id: item.productId, tenantId } })
+        if (!product) throw new Error('Produk tidak ditemukan')
+        productMap.set(item.productId, product)
+      }
+    }
+
     // Number: blank keeps existing; a new non-blank value must be free
     let invoiceNumber = invoice.invoiceNumber
     if (customNumber != null) {
@@ -251,8 +266,10 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
 const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
       const lineTotal = Number(item.quantity || 0) * Number(item.unitPrice || 0) * (1 - discPct / 100)
       subtotal += lineTotal
+      const product = item.productId ? productMap.get(item.productId) : null
       return {
         productId: item.productId || null,
+        unit: item.unit || product?.unit || 'unit',
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,

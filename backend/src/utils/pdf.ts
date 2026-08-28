@@ -257,7 +257,7 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
     const textY = rowY + 5
     doc.fillColor(t.text)
     doc.text(item.description || '-', colDesc.x, textY, { width: colDesc.w })
-    doc.text(`${Number(item.quantity)} ${item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
+    doc.text(`${Number(item.quantity)} ${item.unit || item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
     if (hasAnyDiscount) {
       doc.text(
@@ -553,7 +553,7 @@ export async function generateQuotationPdf(quotationId: string, tenantId: string
     const textY = rowY + 5
     doc.fillColor(t.text)
     doc.text(item.description || '-', colDesc.x, textY, { width: colDesc.w })
-    doc.text(`${Number(item.quantity)} ${item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
+    doc.text(`${Number(item.quantity)} ${item.unit || item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
     if (hasAnyDiscount) {
       doc.text(

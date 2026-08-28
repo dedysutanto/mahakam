@@ -179,6 +179,7 @@ model InvoiceItem {
   id          String   @id @default(cuid())
   invoiceId   String
   productId   String?
+  unit        String?  @db.VarChar(20)
   description String   @db.VarChar(300)
   quantity    Decimal  @default(1) @db.Decimal(10, 2)
   unitPrice   Decimal  @db.Decimal(18, 2)

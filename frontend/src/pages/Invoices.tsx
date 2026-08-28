@@ -108,7 +108,7 @@ export default function Invoices() {
       issueDate: toDateInput(now),
       dueDate: toDateInput(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
       taxId: '',
-      items: [{ productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
+      items: [{ productId: '', unit: 'unit', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
       notes: '',
       terms: '',
     }
@@ -196,9 +196,9 @@ export default function Invoices() {
     setNewProdIdx(null)
     const p = products.find((x) => x.id === value)
     if (p) {
-      setItem(idx, { productId: p.id, description: p.name, unitPrice: Number(p.price) })
+      setItem(idx, { productId: p.id, unit: p.unit || 'unit', description: p.name, unitPrice: Number(p.price) })
     } else {
-      setItem(idx, { productId: '', description: '', unitPrice: 0 })
+      setItem(idx, { productId: '', unit: 'unit', description: '', unitPrice: 0 })
     }
   }
 
@@ -405,6 +405,7 @@ export default function Invoices() {
         const matched = products.find((p) => p.name === it.description)
         return {
           productId: matched?.id || '',
+          unit: it.unit || matched?.unit || 'unit',
           description: it.description,
           quantity: Number(it.quantity),
           unitPrice: Number(it.unitPrice),
@@ -857,7 +858,8 @@ export default function Invoices() {
                   <>
                 <div className="grid grid-cols-12 gap-2 mb-1 px-1">
                   <div className="col-span-5 text-xs font-medium text-muted-foreground">Produk</div>
-                  <div className="col-span-3 text-xs font-medium text-muted-foreground text-right pr-6">Qty</div>
+                  <div className="col-span-2 text-xs font-medium text-muted-foreground text-right pr-4">Qty</div>
+                  <div className="col-span-1 text-xs font-medium text-muted-foreground">Satuan</div>
                   <div className="col-span-2 text-xs font-medium text-muted-foreground">Harga (Rp)</div>
                   <div className="col-span-2 text-xs font-medium text-muted-foreground">Diskon (%)</div>
                 </div>
@@ -880,6 +882,7 @@ export default function Invoices() {
                           <button type="button" className="text-xs text-muted-foreground hover:text-foreground shrink-0" title="Hapus link produk" onClick={() => {
                             const newItems = [...formData.items]
                             newItems[idx].productId = ''
+                            newItems[idx].unit = 'unit'
                             newItems[idx].isManual = true
                             setFormData({ ...formData, items: newItems })
                           }}>✕</button>
@@ -908,7 +911,7 @@ export default function Invoices() {
                         </div>
                       )}
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-2">
                       <input
                         type="number" min="1"
                         className="input"
@@ -920,6 +923,26 @@ export default function Invoices() {
                           setFormData({ ...formData, items: newItems })
                         }}
                       />
+                    </div>
+                    <div className="col-span-1">
+                      {item.productId && !item.isManual ? (
+                        <span className="input flex items-center bg-muted text-muted-foreground text-xs truncate" title="Satuan produk">{products.find(p => p.id === item.productId)?.unit || '-'}</span>
+                      ) : (
+                        <select
+                          className="input text-xs"
+                          title="Satuan"
+                          value={item.unit || 'unit'}
+                          onChange={(e) => {
+                            const newItems = [...formData.items]
+                            newItems[idx].unit = e.target.value
+                            setFormData({ ...formData, items: newItems })
+                          }}
+                        >
+                          {unitOptions.map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div className="col-span-2">
                       <input
@@ -1022,7 +1045,7 @@ export default function Invoices() {
                     onClick={() =>
                       setFormData({
                         ...formData,
-                        items: [...formData.items, { productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
+                        items: [...formData.items, { productId: '', unit: 'unit', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
                       })
                     }
                   >
@@ -1034,7 +1057,7 @@ export default function Invoices() {
                     onClick={() =>
                       setFormData({
                         ...formData,
-                        items: [...formData.items, { productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: true }],
+                        items: [...formData.items, { productId: '', unit: 'unit', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: true }],
                       })
                     }
                   >
