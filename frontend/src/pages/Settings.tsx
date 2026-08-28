@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const [companyCity, setCompanyCity] = useState('')
   const [companyProvince, setCompanyProvince] = useState('')
   const [companyCountry, setCompanyCountry] = useState(DEFAULT_COUNTRY)
+  const [companyAbbreviation, setCompanyAbbreviation] = useState('')
   const [bankName, setBankName] = useState('')
   const [bankAccountNumber, setBankAccountNumber] = useState('')
   const [bankAccountHolder, setBankAccountHolder] = useState('')
@@ -296,6 +297,7 @@ export default function SettingsPage() {
         setCompanyCity(data.company_city || '')
         setCompanyProvince(data.company_province || '')
         setCompanyCountry(data.company_country || DEFAULT_COUNTRY)
+        setCompanyAbbreviation(data.company_abbreviation || '')
         setBankName(data.bank_name || '')
         setBankAccountNumber(data.bank_account_number || '')
         setBankAccountHolder(data.bank_account_holder || '')
@@ -397,6 +399,11 @@ export default function SettingsPage() {
         const err = await res.json()
         throw new Error(err.message || 'Gagal menyimpan')
       }
+      await fetch('/api/tenants/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_abbreviation: companyAbbreviation.toUpperCase().slice(0, 3) }),
+      })
       setMsg('Nama perusahaan berhasil diperbarui!')
     } catch (err: any) {
       setMsg(err.message)
@@ -469,6 +476,7 @@ export default function SettingsPage() {
           company_city: companyCity,
           company_province: companyProvince,
           company_country: companyCountry,
+          company_abbreviation: companyAbbreviation.toUpperCase().slice(0, 3),
           bank_name: bankName,
           bank_account_number: bankAccountNumber,
           bank_account_holder: bankAccountHolder,
@@ -517,17 +525,25 @@ export default function SettingsPage() {
     setNumberingDirty(true)
   }
 
+  const suggestAbbr = (name: string) => {
+    const skip = ['PT', 'CV', 'UD', 'PT.', 'CV.', 'TBK', 'Tbk', 'TBK.']
+    const words = name.trim().split(/\s+/).filter((w) => !skip.includes(w))
+    return words.map((w) => w[0]?.toUpperCase() || '').join('').slice(0, 3) || 'XXX'
+  }
+
   const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
   const previewNumber = (kind: string) => {
     const fmt = numbering[kind]?.trim() || KINDS.find((k) => k.key === kind)?.defaultFormat || '{000}/DOC/{RM}/{YYYY}'
     const now = new Date()
+    const abbr = companyAbbreviation.toUpperCase().slice(0, 3) || suggestAbbr(tenantName)
     const render = (s: string) => s
       .replace(/\{YYYY\}/g, String(now.getFullYear()))
       .replace(/\{YY\}/g, String(now.getFullYear()).slice(-2))
       .replace(/\{MM\}/g, String(now.getMonth() + 1).padStart(2, '0'))
       .replace(/\{RM\}/g, ROMAN[now.getMonth()] || String(now.getMonth() + 1))
       .replace(/\{DD\}/g, String(now.getDate()).padStart(2, '0'))
+      .replace(/\{ABBR\}/g, abbr)
     const seqMatch = fmt.match(/\{(0+|X+|SEQ(?::\d+)?)\}/)
     if (!seqMatch) return render(fmt)
     const width = seqMatch[1] === 'SEQ' ? 4 : seqMatch[1].startsWith('SEQ:') ? parseInt(seqMatch[1].slice(4)) || 4 : seqMatch[1].length
@@ -563,6 +579,15 @@ export default function SettingsPage() {
               onChange={(e) => setTenantName(e.target.value)}
               placeholder="Nama perusahaan Anda"
             />
+            <input
+              type="text"
+              className="input w-24"
+              maxLength={3}
+              value={companyAbbreviation}
+              onChange={(e) => setCompanyAbbreviation(e.target.value.toUpperCase().slice(0, 3))}
+              placeholder={suggestAbbr(tenantName)}
+              title="Singkatan perusahaan (3 karakter, opsional)"
+            />
             <button
               onClick={handleNameSave}
               disabled={saving || !tenantName.trim()}
@@ -571,6 +596,9 @@ export default function SettingsPage() {
               Simpan
             </button>
           </div>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Singkatan (opsional) — dapat digunakan di format nomor dokumen via token {'{ABBR}'}
+          </p>
         </div>
 
         {/* Logo Upload */}
@@ -1095,6 +1123,7 @@ export default function SettingsPage() {
             <span><code className="font-mono bg-muted px-1 rounded">{'{MM}'}</code> bulan (01-12)</span>
             <span><code className="font-mono bg-muted px-1 rounded">{'{RM}'}</code> bulan (I-XII)</span>
             <span><code className="font-mono bg-muted px-1 rounded">{'{DD}'}</code> tanggal</span>
+            <span><code className="font-mono bg-muted px-1 rounded">{'{ABBR}'}</code> singkatan</span>
           </div>
 
           <div className="space-y-4">

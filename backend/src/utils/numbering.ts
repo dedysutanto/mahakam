@@ -22,13 +22,14 @@ function toRoman(n: number): string {
   return ROMAN[n - 1] || String(n)
 }
 
-function renderDateTokens(template: string, date: Date): string {
+function renderTokens(template: string, date: Date, abbr: string): string {
   return template
     .replace(/\{YYYY\}/g, String(date.getFullYear()))
     .replace(/\{YY\}/g, String(date.getFullYear()).slice(-2))
     .replace(/\{MM\}/g, String(date.getMonth() + 1).padStart(2, '0'))
     .replace(/\{RM\}/g, toRoman(date.getMonth() + 1))
     .replace(/\{DD\}/g, String(date.getDate()).padStart(2, '0'))
+    .replace(/\{ABBR\}/g, abbr)
 }
 
 function parseSequenceToken(format: string): { token: string; width: number; prefix: string; suffix: string } | null {
@@ -112,8 +113,9 @@ export async function generateDocNumber(
 
   // 5. Render date tokens in prefix and suffix
   const now = new Date()
-  const renderedPrefix = renderDateTokens(parsed.prefix, now)
-  const renderedSuffix = renderDateTokens(parsed.suffix, now)
+  const abbr = await getSetting(tenantId, 'company_abbreviation', '')
+  const renderedPrefix = renderTokens(parsed.prefix, now, abbr)
+  const renderedSuffix = renderTokens(parsed.suffix, now, abbr)
 
   // 6. Find the highest existing number with this context
   const last = await model.findFirst({
