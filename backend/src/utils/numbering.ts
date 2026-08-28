@@ -75,18 +75,18 @@ const LEGACY_PREFIX: Record<string, string> = {
   quotation: 'QUO',
 }
 
+const DELEGATES: Record<string, { model: any; field: string; dateField: string }> = {
+  invoice: { model: prisma.invoice, field: 'invoiceNumber', dateField: 'issueDate' },
+  expense: { model: prisma.expense, field: 'expenseNumber', dateField: 'date' },
+  purchase: { model: prisma.purchase, field: 'purchaseNumber', dateField: 'orderDate' },
+  quotation: { model: prisma.quotation, field: 'quotationNumber', dateField: 'issueDate' },
+}
+
 export async function generateDocNumber(
   kind: 'invoice' | 'expense' | 'purchase' | 'quotation',
   tenantId: string
 ): Promise<string> {
-  const delegates: Record<string, { model: any; field: string }> = {
-    invoice: { model: prisma.invoice, field: 'invoiceNumber' },
-    expense: { model: prisma.expense, field: 'expenseNumber' },
-    purchase: { model: prisma.purchase, field: 'purchaseNumber' },
-    quotation: { model: prisma.quotation, field: 'quotationNumber' },
-  }
-
-  const { model, field } = delegates[kind]
+  const { model, field, dateField } = DELEGATES[kind]
 
   // 1. Read format from settings
   let format = await getSetting(tenantId, `numbering_${kind}_format`, '')
@@ -107,37 +107,54 @@ export async function generateDocNumber(
   // 4. Parse sequence token
   const parsed = parseSequenceToken(format)
   if (!parsed) {
-    // No sequence token — return a simple fallback
     return `${LEGACY_PREFIX[kind]}-0001`
   }
 
-  // 5. Render date tokens in prefix and suffix
+  // 5. Render tokens for the candidate
   const now = new Date()
   const abbr = await getSetting(tenantId, 'company_abbreviation', '')
   const renderedPrefix = renderTokens(parsed.prefix, now, abbr)
   const renderedSuffix = renderTokens(parsed.suffix, now, abbr)
 
-  // 6. Find the highest existing number with this context
+  // 6. Build date filter based on reset context in the format
+  const hasMonthToken = /\{(MM|RM)\}/.test(format)
+  const hasYearToken = /\{(YYYY|YY)\}/.test(format)
+  const dateFilter: any = {}
+  if (hasMonthToken) {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    dateFilter[dateField] = { gte: start, lte: end }
+  } else if (hasYearToken) {
+    const start = new Date(now.getFullYear(), 0, 1)
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+    dateFilter[dateField] = { gte: start, lte: end }
+  }
+  // else: no date tokens → no date filter (find max across all)
+
+  // 7. Find the highest existing number in this date context
   const last = await model.findFirst({
-    where: {
-      tenantId,
-      [field]: { startsWith: renderedPrefix, endsWith: renderedSuffix },
-    },
+    where: { tenantId, ...dateFilter },
     orderBy: { [field]: 'desc' },
     select: { [field]: true },
   })
 
-  // 7. Extract and increment sequence
+  // 8. Extract sequence from existing number using regex on the token pattern
   let seq = 1
   if (last) {
-    const seqStr = last[field].slice(
-      renderedPrefix.length,
-      last[field].length - (renderedSuffix.length || 0),
-    )
-    seq = (parseInt(seqStr, 10) || 0) + 1
+    const numStr = last[field] as string
+    // Build a regex from the sequence token: {000} → (\d+), {SEQ} → (\d+), etc.
+    const escaped = parsed.token.replace(/[{}]/g, '\\$&')
+      .replace(/0+/g, '(\\d+)')
+      .replace(/X+/g, '([0-9]+)')
+      .replace(/SEQ(?::\d+)?/, '(\\d+)')
+    const re = new RegExp(escaped)
+    const m = numStr.match(re)
+    if (m) {
+      seq = (parseInt(m[1], 10) || 0) + 1
+    }
   }
 
-  // 8. Collision loop
+  // 9. Collision loop
   const candidate = () => `${renderedPrefix}${pad(seq, parsed.width)}${renderedSuffix}`
   while (
     await model.findFirst({
