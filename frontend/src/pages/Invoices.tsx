@@ -1124,7 +1124,7 @@ export default function Invoices() {
                     />
                   </th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-muted backdrop-blur border-r border-border">No. Faktur</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px] sticky left-[184px] z-20 bg-muted backdrop-blur border-r border-border">Pelanggan</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px]">Pelanggan</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jatuh Tempo</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
@@ -1149,7 +1149,7 @@ export default function Invoices() {
                       <td className="px-5 py-3 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-card/95 backdrop-blur border-r border-border">
                         <span className="text-sm font-medium text-primary">{inv.invoiceNumber}</span>
                       </td>
-                      <td className="px-5 py-3 text-sm text-foreground min-w-[140px] sticky left-[184px] z-20 bg-card/95 backdrop-blur border-r border-border">{inv.customerName}</td>
+                      <td className="px-5 py-3 text-sm text-foreground min-w-[140px]">{inv.customerName}</td>
                       <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(inv.issueDate)}</td>
                       <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(inv.dueDate)}</td>
                       <td className="px-5 py-3 text-sm text-right font-medium text-foreground">{formatCurrency(inv.total)}</td>
