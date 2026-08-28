@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
 import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
-import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Wallet, Tag, CheckSquare, Square } from 'lucide-react'
+import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Wallet, Tag, Wand2, PenSquare } from 'lucide-react'
 
 interface InvoiceItem {
   description: string
@@ -75,8 +75,8 @@ export default function Invoices() {
   useFormHistory(showForm, () => { setShowForm(false); setReturnToView(false) })
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null)
   const [search, setSearch] = useState('')
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [recapBusy, setRecapBusy] = useState(false)
+  const [recapMode, setRecapMode] = useState<'choice' | 'manual' | null>(null)
   const [recapWizard, setRecapWizard] = useState<'client' | 'invoices' | null>(null)
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
   const [wizardMonth, setWizardMonth] = useState('all')
@@ -84,6 +84,11 @@ export default function Invoices() {
   const [wizardBusy, setWizardBusy] = useState(false)
   const [wizardStatusFilter, setWizardStatusFilter] = useState('sent_partial')
   const [wizardClientSearch, setWizardClientSearch] = useState('')
+  const [manualSelectedIds, setManualSelectedIds] = useState<string[]>([])
+  const [manualStatusFilter, setManualStatusFilter] = useState('all')
+  const [manualMonth, setManualMonth] = useState('all')
+  const [manualSearch, setManualSearch] = useState('')
+  const [manualBusy, setManualBusy] = useState(false)
 
   const [paying, setPaying] = useState<Invoice | null>(null)
   const [payForm, setPayForm] = useState({ amount: '', method: 'transfer', reference: '', notes: '' })
@@ -243,21 +248,6 @@ export default function Invoices() {
     return matchSearch && matchStatus && matchPeriod(inv.issueDate, period)
   })
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-  }
-
-  const recapEligible = filtered.filter((inv) => inv.status !== 'draft')
-  const allSelectedVisible = recapEligible.length > 0 && recapEligible.every((inv) => selectedIds.includes(inv.id))
-
-  const toggleSelectAll = () => {
-    setSelectedIds(allSelectedVisible ? [] : recapEligible.map((inv) => inv.id))
-  }
-
-  const selectedInvoices = invoices.filter((inv) => selectedIds.includes(inv.id))
-  const recapClients = new Set(selectedInvoices.map((inv) => inv.customerId))
-  const recapReady = selectedIds.length > 0 && recapClients.size === 1
-
   const openPayment = (inv: Invoice) => {
     const outstanding = Math.max(Number(inv.total) - Number(inv.amountPaid || 0), 0)
     setPaying(inv)
@@ -287,15 +277,14 @@ export default function Invoices() {
     }
   }
 
-  const handleRecap = async (ids?: string[]) => {
-    const recapIds = ids || selectedIds
-    if (recapIds.length === 0) return
+  const handleRecap = async (ids: string[]) => {
+    if (ids.length === 0) return
     setRecapBusy(true)
     try {
       const res = await fetch('/api/invoices/recap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: recapIds }),
+        body: JSON.stringify({ ids }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -305,7 +294,7 @@ export default function Invoices() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const recapInvoice = invoices.find((i) => recapIds.includes(i.id))
+      const recapInvoice = invoices.find((i) => ids.includes(i.id))
       a.download = `rekap-${(recapInvoice?.customerName || 'rekap').toLowerCase().replace(/\s+/g, '-')}.pdf`
       document.body.appendChild(a)
       a.click()
@@ -327,8 +316,11 @@ export default function Invoices() {
 
   const openRecapWizard = () => {
     resetWizardFilters()
-    setRecapWizard('client')
-    setSelectedClient(null)
+    setManualSelectedIds([])
+    setManualStatusFilter('all')
+    setManualMonth('all')
+    setManualSearch('')
+    setRecapMode('choice')
   }
 
   const wizardClientInvoices = invoices.filter(
@@ -382,8 +374,47 @@ export default function Invoices() {
     try {
       await handleRecap(wizardFilteredInvoices.map((i: any) => i.id))
       setRecapWizard(null)
+      setRecapMode(null)
     } finally {
       setWizardBusy(false)
+    }
+  }
+
+  // Manual mode logic
+  const manualEligibleInvoices = invoices.filter((inv) => inv.status !== 'draft')
+
+  const manualMonths = Array.from(
+    new Set(manualEligibleInvoices.map((inv: any) => String(inv.issueDate).slice(0, 7)))
+  ).sort().reverse()
+
+  const manualMonthLabel = (key: string) => {
+    const [yy, mm] = key.split('-').map(Number)
+    return new Date(yy, mm - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+  }
+
+  const manualFilteredInvoices = manualEligibleInvoices.filter((inv: any) =>
+    (manualStatusFilter === 'all'
+      || (manualStatusFilter === 'sent_partial' && (inv.status === 'sent' || inv.status === 'partial'))
+      || inv.status === manualStatusFilter)
+    && (manualMonth === 'all' || String(inv.issueDate).slice(0, 7) === manualMonth)
+    && (!manualSearch ||
+      inv.invoiceNumber.toLowerCase().includes(manualSearch.toLowerCase()) ||
+      inv.customerName.toLowerCase().includes(manualSearch.toLowerCase()))
+  )
+
+  const manualSelectedInvoices = invoices.filter((inv) => manualSelectedIds.includes(inv.id))
+  const manualCustomers = new Set(manualSelectedInvoices.map((inv) => inv.customerId))
+  const manualReady = manualSelectedIds.length > 0 && manualCustomers.size === 1
+
+  const handleManualRecap = async () => {
+    if (manualSelectedIds.length === 0) return
+    setManualBusy(true)
+    try {
+      await handleRecap(manualSelectedIds)
+      setRecapMode(null)
+      setManualSelectedIds([])
+    } finally {
+      setManualBusy(false)
     }
   }
 
@@ -1145,45 +1176,13 @@ export default function Invoices() {
           </select>
         </div>
 
-        {selectedIds.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/30 bg-accent/40 px-5 py-3">
-            <p className="text-sm text-foreground">
-              <span className="font-semibold">{selectedIds.length} faktur dipilih</span>
-              {!recapReady && (
-                <span className="text-destructive ml-2">— rekap hanya untuk satu pelanggan yang sama</span>
-              )}
-            </p>
-            <div className="flex items-center gap-2">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedIds([])}>
-                Bersihkan
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                disabled={!recapReady || recapBusy}
-                onClick={() => handleRecap()}
-              >
-                {recapBusy ? 'Membuat...' : 'Buat Rekap'}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Table */}
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="px-4 py-3 w-10 min-w-[40px] max-w-[40px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border">
-                    <input
-                      type="checkbox"
-                      checked={allSelectedVisible}
-                      onChange={toggleSelectAll}
-                      title="Pilih semua yang terlihat"
-                    />
-                  </th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-muted backdrop-blur border-r border-border overflow-hidden">No. Faktur</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36 min-w-[144px] max-w-[144px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border overflow-hidden">No. Faktur</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px]">Pelanggan</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jatuh Tempo</th>
@@ -1197,16 +1196,7 @@ export default function Invoices() {
                 {filtered.map((inv) => {
                   return (
                     <tr key={inv.id} className="hover:bg-muted cursor-pointer" onClick={() => openView(inv.id)}>
-                      <td className="px-4 py-3 min-w-[40px] max-w-[40px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          disabled={inv.status === 'draft'}
-                          checked={selectedIds.includes(inv.id)}
-                          onChange={() => toggleSelect(inv.id)}
-                          title={inv.status === 'draft' ? 'Faktur draft tidak bisa direkap' : 'Pilih untuk rekap'}
-                        />
-                      </td>
-                      <td className="px-5 py-3 min-w-[144px] max-w-[144px] sticky left-[40px] z-20 bg-card/95 backdrop-blur border-r border-border overflow-hidden">
+                      <td className="px-5 py-3 min-w-[144px] max-w-[144px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border overflow-hidden">
                         <span className="text-sm font-medium text-primary truncate block">{inv.invoiceNumber}</span>
                       </td>
                       <td className="px-5 py-3 text-sm text-foreground min-w-[140px]">{inv.customerName}</td>
@@ -1484,6 +1474,223 @@ export default function Invoices() {
                     {wizardBusy ? 'Membuat...' : 'Buat Rekap PDF'}
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recap Choice Modal */}
+      {recapMode === 'choice' && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setRecapMode(null)}
+        >
+          <div
+            className="bg-card rounded-xl border border-border shadow-xl w-full max-w-md p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold text-foreground text-lg">Buat Rekap Faktur</h3>
+            <p className="text-sm text-muted-foreground mt-1">Pilih metode pembuatan rekap faktur</p>
+            <div className="mt-4 space-y-3">
+              <button
+                type="button"
+                className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                onClick={() => {
+                  setRecapMode(null)
+                  resetWizardFilters()
+                  setSelectedClient(null)
+                  setRecapWizard('client')
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <Wand2 className="w-5 h-5 text-primary" />
+                  <div>
+                    <div className="text-sm font-medium text-foreground">Panduan (Wizard)</div>
+                    <div className="text-xs text-muted-foreground">Pilih pelanggan, lalu pilih faktur yang akan direkap</div>
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                onClick={() => {
+                  setRecapMode('manual')
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <PenSquare className="w-5 h-5 text-primary" />
+                  <div>
+                    <div className="text-sm font-medium text-foreground">Pilihan Manual</div>
+                    <div className="text-xs text-muted-foreground">Pilih faktur satu per satu dari semua faktur yang tersedia</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+            <div className="flex justify-end mt-5">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRecapMode(null)}>
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Recap Modal */}
+      {recapMode === 'manual' && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => { setRecapMode(null); setManualSelectedIds([]) }}
+        >
+          <div
+            className="bg-card rounded-xl border border-border shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div>
+                <h3 className="font-semibold text-foreground">Pilih Faktur (Manual)</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {manualEligibleInvoices.length} faktur non-draft tersedia
+                </p>
+              </div>
+              <button
+                onClick={() => { setRecapMode(null); setManualSelectedIds([]) }}
+                className="p-1 text-muted-foreground hover:text-foreground"
+              >
+                <span className="sr-only">Tutup</span>
+                <span className="text-xl leading-none">&times;</span>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                <select
+                  className="input text-sm"
+                  value={manualStatusFilter}
+                  onChange={(e) => setManualStatusFilter(e.target.value)}
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="sent_partial">Terkirim & Sebagian</option>
+                  {Object.entries(statusLabels)
+                    .filter(([k]) => k !== 'draft')
+                    .map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                </select>
+                <select
+                  className="input text-sm"
+                  value={manualMonth}
+                  onChange={(e) => setManualMonth(e.target.value)}
+                >
+                  <option value="all">Semua Periode</option>
+                  {manualMonths.map((m) => (
+                    <option key={m} value={m}>{manualMonthLabel(m)}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="input text-sm"
+                  placeholder="Cari nomor/pelanggan..."
+                  value={manualSearch}
+                  onChange={(e) => setManualSearch(e.target.value)}
+                />
+              </div>
+
+              {/* Select all visible */}
+              {manualFilteredInvoices.length > 0 && (
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <input
+                    type="checkbox"
+                    checked={manualFilteredInvoices.every((inv) => manualSelectedIds.includes(inv.id))}
+                    onChange={() => {
+                      const visibleIds = manualFilteredInvoices.map((inv) => inv.id)
+                      const allSelected = visibleIds.every((id) => manualSelectedIds.includes(id))
+                      setManualSelectedIds(allSelected ? manualSelectedIds.filter((id) => !visibleIds.includes(id)) : [...new Set([...manualSelectedIds, ...visibleIds])])
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">Pilih semua yang terlihat</span>
+                </div>
+              )}
+
+              {manualFilteredInvoices.map((inv: any) => {
+                const saldo = Math.max(Number(inv.total) - Number(inv.amountPaid || 0), 0)
+                return (
+                  <label
+                    key={inv.id}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border border-border cursor-pointer transition-colors ${manualSelectedIds.includes(inv.id) ? 'bg-accent/60 border-primary/40' : saldo === 0 ? 'opacity-75' : 'hover:bg-muted'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={manualSelectedIds.includes(inv.id)}
+                      onChange={() => {
+                        setManualSelectedIds((prev) => prev.includes(inv.id) ? prev.filter((x) => x !== inv.id) : [...prev, inv.id])
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-primary">{inv.invoiceNumber}</span>
+                        <span className={`badge badge-xs ${
+                          inv.status === 'paid' ? 'badge-success'
+                            : inv.status === 'overdue' ? 'badge-destructive'
+                              : inv.status === 'partial' ? 'badge-warning'
+                                : inv.status === 'sent' ? 'badge-info'
+                                  : 'badge-default'
+                        }`}>
+                          {statusLabels[inv.status] || inv.status}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateDMY(inv.issueDate)}
+                        </span>
+                      </div>
+                      <div className="text-sm text-foreground">{inv.customerName} · {formatCurrency(inv.total)}</div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-xs text-muted-foreground">Sisa</div>
+                      <div className="text-sm font-medium text-foreground">{formatCurrency(saldo)}</div>
+                    </div>
+                  </label>
+                )
+              })}
+              {manualFilteredInvoices.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">Tidak ada faktur sesuai filter</p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-border p-5">
+              <div className="flex items-center justify-between text-sm mb-4 px-1">
+                <span className="text-muted-foreground">
+                  {manualSelectedIds.length} faktur dipilih
+                  {!manualReady && manualSelectedIds.length > 0 && (
+                    <span className="text-destructive ml-2">— rekap hanya untuk satu pelanggan yang sama</span>
+                  )}
+                </span>
+                {manualReady && (
+                  <span className="font-semibold text-foreground">
+                    Total Saldo: {formatCurrency(
+                      manualSelectedInvoices.reduce((s: number, i: any) => s + Math.max(Number(i.total) - Number(i.amountPaid || 0), 0), 0)
+                    )}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => { setRecapMode(null); setManualSelectedIds([]) }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={!manualReady || manualBusy}
+                  onClick={handleManualRecap}
+                >
+                  {manualBusy ? 'Membuat...' : 'Buat Rekap PDF'}
+                </button>
               </div>
             </div>
           </div>

@@ -157,6 +157,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T62 | x | Invoice item unit field: added `unit VARCHAR(20)` to `InvoiceItem` schema; backend auto-fills unit from `Product.unit` for product items, accepts from request body for manual items (default `"unit"`); PDF renders `item.unit \|\| item.product?.unit`; frontend adds unit column to item grid (read-only for product, dropdown for manual); unit dropdown uses tenant's `product_units` list | V41,B36 |
 | T63 | x | Suggestive auto-number placeholder: `GET /api/invoices/next-number` endpoint returns actual next number from `generateDocNumber`; frontend fetches on create form open and shows as No. Faktur placeholder; cleared on form close; numbering engine fixed: date-field filter (issueDate/orderDate/date) replaces suffix match; sequence extracted via regex on token pattern; handles format changes and ABBR updates | V42,B37 |
 | T64 | x | Numbering regex capture group fix: wrapped `seqPattern` in capture group parentheses so `m[1]` captures the sequence digits correctly; without it, `parseInt(undefined, 10) \|\| 0` always returned 0 | V43,B38 |
+| T65 | x | Invoice rekap flow rework: removed checkbox column from main invoice table; "Buat Rekap" header button opens choice modal (Panduan/Manual); Panduan opens existing wizard (client→invoices); Manual opens checklist modal with all non-draft invoices, filterable by status/period/search, select-all visible, same-customer validation; both paths call `handleRecap(ids)` | V44 |
 
 ## §B — bugs
 
