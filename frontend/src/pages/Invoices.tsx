@@ -1421,7 +1421,7 @@ export default function Invoices() {
                         className={`flex items-center justify-between px-4 py-3 rounded-lg border border-border ${saldo === 0 ? 'opacity-75' : ''}`}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-medium text-primary">{inv.invoiceNumber}</span>
                             <span className={`badge badge-xs ${
                               inv.status === 'paid' ? 'badge-success'
