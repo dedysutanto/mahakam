@@ -108,7 +108,7 @@ export default function Invoices() {
       issueDate: toDateInput(now),
       dueDate: toDateInput(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
       taxId: '',
-      items: [{ productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0 }],
+      items: [{ productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
       notes: '',
       terms: '',
     }
@@ -410,6 +410,7 @@ export default function Invoices() {
           unitPrice: Number(it.unitPrice),
           discount: Number(it.discount ?? 0),
           taxRate: 0,
+          isManual: !matched?.id,
         }
       }),
       notes: inv.notes || '',
@@ -440,7 +441,8 @@ export default function Invoices() {
       const { taxId, ...rest } = formData
       const payload: any = {
         ...rest,
-        invoiceNumber: (rest.invoiceNumber || '').trim() || undefined, // blank -> auto at save
+        items: rest.items.map(({ isManual, ...item }: any) => item),
+        invoiceNumber: (rest.invoiceNumber || '').trim() || undefined,
       }
       if (taxId === '__none__') {
         payload.taxRate = 0 // explicit no-tax beats the tenant default fallback
@@ -525,6 +527,7 @@ export default function Invoices() {
         discount: Number(it.discount ?? 0),
         unit: it.product?.unit || '',
         taxRate: Number(inv.taxRate || 0),
+        isManual: !pid,
       }
     }),
     notes: inv.notes || '',
@@ -861,31 +864,48 @@ export default function Invoices() {
                 {formData.items.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
                     <div className="col-span-5">
-                      {item.productId || !item.description ? (
-                        <select
-                          className="input"
-                          value={item.productId || ''}
-                          onChange={(e) => handleProductPick(idx, e.target.value)}
-                        >
-                          <option value="">Pilih produk...</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                          {!item.productId && <option value="__new__">+ Produk baru...</option>}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          className="input"
-                          placeholder="Item bebas..."
-                          title="Item tanpa produk katalog — ubah teksnya langsung"
-                          value={item.description}
-                          onChange={(e) => {
+                      {item.productId || !item.isManual ? (
+                        <div className="flex items-center gap-1">
+                          <select
+                            className="input flex-1"
+                            value={item.productId || ''}
+                            onChange={(e) => handleProductPick(idx, e.target.value)}
+                          >
+                            <option value="">Pilih produk...</option>
+                            {products.map((p) => (
+                              <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                            {!item.productId && <option value="__new__">+ Produk baru...</option>}
+                          </select>
+                          <button type="button" className="text-xs text-muted-foreground hover:text-foreground shrink-0" title="Hapus link produk" onClick={() => {
                             const newItems = [...formData.items]
-                            newItems[idx].description = e.target.value
+                            newItems[idx].productId = ''
+                            newItems[idx].isManual = true
                             setFormData({ ...formData, items: newItems })
-                          }}
-                        />
+                          }}>✕</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            className="input flex-1"
+                            placeholder="Item non produk (cth: Ongkir)..."
+                            value={item.description}
+                            onChange={(e) => {
+                              const newItems = [...formData.items]
+                              newItems[idx].description = e.target.value
+                              setFormData({ ...formData, items: newItems })
+                            }}
+                          />
+                          {products.length > 0 && (
+                            <button type="button" className="text-xs text-muted-foreground hover:text-foreground shrink-0" title="Pilih dari katalog produk" onClick={() => {
+                              const newItems = [...formData.items]
+                              newItems[idx].productId = ''
+                              newItems[idx].isManual = false
+                              setFormData({ ...formData, items: newItems })
+                            }}>📦</button>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="col-span-3">
@@ -995,18 +1015,32 @@ export default function Invoices() {
                     </div>
                   </div>
                 )}
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:text-primary"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      items: [...formData.items, { productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0 }],
-                    })
-                  }
-                >
-                  + Tambah Item
-                </button>
+                <div className="flex items-center gap-3 mt-1">
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:text-primary"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        items: [...formData.items, { productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
+                      })
+                    }
+                  >
+                    + Tambah Item
+                  </button>
+                  <button
+                    type="button"
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        items: [...formData.items, { productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: true }],
+                      })
+                    }
+                  >
+                    + Tambah Item Non Product
+                  </button>
+                </div>
                   </>
                 )}
               </div>
