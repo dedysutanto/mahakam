@@ -22,6 +22,10 @@ function toRoman(n: number): string {
   return ROMAN[n - 1] || String(n)
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function renderTokens(template: string, date: Date, abbr: string): string {
   return template
     .replace(/\{YYYY\}/g, String(date.getFullYear()))
@@ -138,16 +142,34 @@ export async function generateDocNumber(
     select: { [field]: true },
   })
 
-  // 8. Extract sequence from existing number using regex on the token pattern
+  // 8. Extract sequence from existing number using date-context-anchored regex
   let seq = 1
   if (last) {
     const numStr = last[field] as string
-    // Build a regex from the sequence token: {000} → (\d+), {SEQ} → (\d+), etc.
-    const escaped = parsed.token.replace(/[{}]/g, '\\$&')
-      .replace(/0+/g, '(\\d+)')
-      .replace(/X+/g, '([0-9]+)')
-      .replace(/SEQ(?::\d+)?/, '(\\d+)')
-    const re = new RegExp(escaped)
+    // Build a date-context anchor from the format's date tokens
+    // e.g. format "{000}/INV/{ABBR}/{RM}/{YYYY}" → dateTokens ["{RM}", "{YYYY}"]
+    // rendered → "VIII" "2026" → anchor regex ".*VIII.*2026"
+    const dateTokenRe = /\{(YYYY|YY|MM|RM|DD)\}/g
+    const dateTokens: string[] = []
+    let dm: RegExpExecArray | null
+    while ((dm = dateTokenRe.exec(parsed.suffix)) !== null) {
+      dateTokens.push(dm[0])
+    }
+    // Also check prefix for date tokens (e.g. {DD}-{MM}-{YYYY}/INV/{000})
+    while ((dm = dateTokenRe.exec(parsed.prefix)) !== null) {
+      dateTokens.push(dm[0])
+    }
+    const dateAnchor = dateTokens.length
+      ? dateTokens.map(t => escapeRegex(renderTokens(t, now, abbr))).join('.*')
+      : ''
+    // Build regex: match sequence digits, then anything, then date anchor
+    const seqPattern = parsed.token.replace(/[{}]/g, '')
+      .replace(/0+/g, '\\d+')
+      .replace(/X+/g, '\\d+')
+      .replace(/SEQ(?::\d+)?/, '\\d+')
+    const re = dateAnchor
+      ? new RegExp(`^${seqPattern}.*${dateAnchor}.*$`)
+      : new RegExp(`^${seqPattern}$`)
     const m = numStr.match(re)
     if (m) {
       seq = (parseInt(m[1], 10) || 0) + 1
