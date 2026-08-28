@@ -135,44 +135,43 @@ export async function generateDocNumber(
   }
   // else: no date tokens → no date filter (find max across all)
 
-  // 7. Find the highest existing number in this date context
-  const last = await model.findFirst({
+  // 7. Find existing numbers in this date context
+  const existing = await model.findMany({
     where: { tenantId, ...dateFilter },
-    orderBy: { [field]: 'desc' },
     select: { [field]: true },
   })
 
-  // 8. Extract sequence from existing number using date-context-anchored regex
+  // 8. Extract sequence from matching numbers using date-context-anchored regex
   let seq = 1
-  if (last) {
-    const numStr = last[field] as string
+  if (existing.length > 0) {
     // Build a date-context anchor from the format's date tokens
-    // e.g. format "{000}/INV/{ABBR}/{RM}/{YYYY}" → dateTokens ["{RM}", "{YYYY}"]
-    // rendered → "VIII" "2026" → anchor regex ".*VIII.*2026"
     const dateTokenRe = /\{(YYYY|YY|MM|RM|DD)\}/g
     const dateTokens: string[] = []
     let dm: RegExpExecArray | null
     while ((dm = dateTokenRe.exec(parsed.suffix)) !== null) {
       dateTokens.push(dm[0])
     }
-    // Also check prefix for date tokens (e.g. {DD}-{MM}-{YYYY}/INV/{000})
     while ((dm = dateTokenRe.exec(parsed.prefix)) !== null) {
       dateTokens.push(dm[0])
     }
     const dateAnchor = dateTokens.length
       ? dateTokens.map(t => escapeRegex(renderTokens(t, now, abbr))).join('.*')
       : ''
-    // Build regex: match sequence digits, then anything, then date anchor
     const seqPattern = parsed.token.replace(/[{}]/g, '')
       .replace(/0+/g, '\\d+')
       .replace(/X+/g, '\\d+')
       .replace(/SEQ(?::\d+)?/, '\\d+')
     const re = dateAnchor
-      ? new RegExp(`^${seqPattern}.*${dateAnchor}.*$`)
-      : new RegExp(`^${seqPattern}$`)
-    const m = numStr.match(re)
-    if (m) {
-      seq = (parseInt(m[1], 10) || 0) + 1
+      ? new RegExp(`^(${seqPattern}).*${dateAnchor}.*$`)
+      : new RegExp(`^(${seqPattern})$`)
+    // Try each invoice number — pick the highest matching sequence
+    for (const row of existing) {
+      const numStr = row[field] as string
+      const m = numStr.match(re)
+      if (m) {
+        const s = (parseInt(m[1], 10) || 0) + 1
+        if (s > seq) seq = s
+      }
     }
   }
 
