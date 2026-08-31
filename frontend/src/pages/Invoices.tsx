@@ -82,7 +82,7 @@ export default function Invoices() {
   const [wizardMonth, setWizardMonth] = useState('all')
   const [wizardSearch, setWizardSearch] = useState('')
   const [wizardBusy, setWizardBusy] = useState(false)
-  const [wizardStatusFilter, setWizardStatusFilter] = useState('sent_partial')
+  const [wizardStatusFilter, setWizardStatusFilter] = useState('sent')
   const [wizardClientSearch, setWizardClientSearch] = useState('')
   const [manualSelectedIds, setManualSelectedIds] = useState<string[]>([])
   const [manualStatusFilter, setManualStatusFilter] = useState('all')
@@ -308,7 +308,7 @@ export default function Invoices() {
   }
 
   const resetWizardFilters = () => {
-    setWizardStatusFilter('sent_partial')
+    setWizardStatusFilter('sent')
     setWizardMonth('all')
     setWizardSearch('')
     setWizardClientSearch('')
@@ -338,16 +338,14 @@ export default function Invoices() {
 
   // Filters define rekap content exactly — anything not matching is excluded (V29)
   const wizardFilteredInvoices = wizardClientInvoices.filter((inv: any) =>
-    (wizardStatusFilter === 'all'
-      || (wizardStatusFilter === 'sent_partial' && (inv.status === 'sent' || inv.status === 'partial'))
-      || inv.status === wizardStatusFilter)
+    (wizardStatusFilter === 'all' || inv.status === wizardStatusFilter)
     && (wizardMonth === 'all' || String(inv.issueDate).slice(0, 7) === wizardMonth)
     && (!wizardSearch || inv.invoiceNumber.toLowerCase().includes(wizardSearch.toLowerCase()))
   )
 
   const wizardSelectClient = (clientId: string) => {
     setSelectedClient(clientId)
-    setWizardStatusFilter('sent_partial')
+    setWizardStatusFilter('sent')
     setWizardSearch('')
     setRecapWizard('invoices')
 
@@ -393,9 +391,7 @@ export default function Invoices() {
   }
 
   const manualFilteredInvoices = manualEligibleInvoices.filter((inv: any) =>
-    (manualStatusFilter === 'all'
-      || (manualStatusFilter === 'sent_partial' && (inv.status === 'sent' || inv.status === 'partial'))
-      || inv.status === manualStatusFilter)
+    (manualStatusFilter === 'all' || inv.status === manualStatusFilter)
     && (manualMonth === 'all' || String(inv.issueDate).slice(0, 7) === manualMonth)
     && (!manualSearch ||
       inv.invoiceNumber.toLowerCase().includes(manualSearch.toLowerCase()) ||
@@ -1378,7 +1374,6 @@ export default function Invoices() {
                       onChange={(e) => setWizardStatusFilter(e.target.value)}
                     >
                       <option value="all">Semua Status</option>
-                      <option value="sent_partial">Terkirim & Sebagian</option>
                       {Object.entries(statusLabels)
                         .filter(([k]) => k !== 'draft')
                         .map(([k, v]) => (
@@ -1572,7 +1567,6 @@ export default function Invoices() {
                   onChange={(e) => setManualStatusFilter(e.target.value)}
                 >
                   <option value="all">Semua Status</option>
-                  <option value="sent_partial">Terkirim & Sebagian</option>
                   {Object.entries(statusLabels)
                     .filter(([k]) => k !== 'draft')
                     .map(([k, v]) => (
