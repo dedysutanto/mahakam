@@ -60,7 +60,7 @@ services:
       start_period: 15s
 
   frontend:
-    image: ghcr.io/dedysutanto/mahakam-frontend:${APP_VERSION:-v1.3.47}
+    image: ghcr.io/dedysutanto/mahakam-frontend:${APP_VERSION:-v1.3.48}
     restart: unless-stopped
     networks:
       - frontend

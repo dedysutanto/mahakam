@@ -18,16 +18,29 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       }
       init = { ...init, headers }
     }
-    const res = await originalFetch(input, init)
-    if (res.status === 401) {
-      localStorage.removeItem('token')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+    try {
+      const res = await originalFetch(input, init)
+      if (res.status === 401) {
+        localStorage.removeItem('token')
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
       }
+      window.dispatchEvent(new CustomEvent('network-ok'))
+      return res
+    } catch (err) {
+      window.dispatchEvent(new CustomEvent('network-error'))
+      throw err
     }
-    return res
   }
   return originalFetch(input, init)
+}
+
+// Register service worker for offline asset caching
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
 }
 
 createRoot(document.getElementById('root')!).render(

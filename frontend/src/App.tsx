@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
+import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Ledgers from './pages/Ledgers'
@@ -137,10 +138,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

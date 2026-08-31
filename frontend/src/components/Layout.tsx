@@ -3,6 +3,7 @@ import { useAuth } from '../lib/AuthContext'
 import { useTheme } from '../lib/ThemeContext'
 import { useNavigate } from 'react-router-dom'
 import { Moon, Sun, LogOut } from 'lucide-react'
+import { WifiOff } from 'lucide-react'
 import { APP_VERSION, GITHUB_URL } from '../config'
 
 // scope = '' means always visible (no backend module behind it)
@@ -25,6 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true')
+  const [offline, setOffline] = useState(!navigator.onLine)
   // Persisted so the logo doesn't flash between fallback and image on every navigation
   const [tenantData, setTenantData] = useState<{ id: string; name: string } | null>(() => {
     try {
@@ -82,6 +84,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const onOffline = () => setOffline(true)
+    const onOnline = () => setOffline(false)
+    const onNetworkError = () => setOffline(true)
+    const onNetworkOk = () => setOffline(false)
+    window.addEventListener('offline', onOffline)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('network-error', onNetworkError)
+    window.addEventListener('network-ok', onNetworkOk)
+    return () => {
+      window.removeEventListener('offline', onOffline)
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('network-error', onNetworkError)
+      window.removeEventListener('network-ok', onNetworkOk)
+    }
   }, [])
 
     const navigate = useNavigate()
@@ -257,6 +276,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
         </header>
+
+        {/* Offline banner */}
+        {offline && (
+          <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center gap-2 text-sm text-destructive">
+            <WifiOff className="w-4 h-4 flex-shrink-0" />
+            <span>Koneksi terputus — periksa jaringan Anda</span>
+          </div>
+        )}
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">
