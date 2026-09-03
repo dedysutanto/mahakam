@@ -161,6 +161,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T65 | x | Invoice rekap flow rework: removed checkbox column from main invoice table; "Buat Rekap" header button opens choice modal (Panduan/Manual); Panduan opens existing wizard (client→invoices); Manual opens checklist modal with all non-draft invoices, filterable by status/period/search, select-all visible, same-customer validation; both paths call `handleRecap(ids)`; removed combined "Terkirim & Sebagian" filter — default status is now "Terkirim" | V44,V45,B39 |
 | T66 | x | Frontend offline resilience: React ErrorBoundary catches render crashes and shows fallback UI; global fetch interceptor dispatches `network-error` events on connection failure; Layout shows "Koneksi terputus" banner that auto-hides on reconnect; Service Worker caches static assets (JS/CSS/HTML) for offline app shell loading; `online`/`offline` events toggle banner visibility | V46 |
 | T67 | x | Expense form account dropdown sourced from new `GET /api/expenses/ledgers` (scope `pengeluaran`), not `GET /api/ledgers` (`buku-besar`) — pengeluaran-scoped staff can create expenses; Expenses page guards list responses with `Array.isArray` so API errors degrade to an empty dropdown instead of a render crash | V47,B40 |
+| T68 | x | Expense form + table drop the "Kategori" free-text field — it duplicated the Akun Beban (ledger) classification; backend `category` column, report byCategory, and API filter remain unchanged (UI-only removal) | |
 
 ## §B — bugs
 

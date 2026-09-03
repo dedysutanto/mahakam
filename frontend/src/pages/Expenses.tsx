@@ -12,10 +12,9 @@ interface Expense {
   description: string
   amount: number
   date: string
-  category: string
+  ledger: { code: string; name: string }
   vendorName: string
   status: string
-  ledger: { code: string; name: string }
   ledgerId?: string
   vendorId?: string | null
   notes?: string | null
@@ -36,7 +35,6 @@ export default function Expenses() {
     description: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
-    category: '',
     notes: '',
   })
   const [editId, setEditId] = useState<string | null>(null)
@@ -108,7 +106,6 @@ export default function Expenses() {
       description: exp.description,
       amount: String(Number(exp.amount)),
       date: new Date(exp.date).toISOString().split('T')[0],
-      category: exp.category || '',
       notes: exp.notes || '',
     })
     setShowForm(true)
@@ -266,16 +263,6 @@ export default function Expenses() {
                   onChange={(v) => setFormData({ ...formData, date: v })}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Kategori</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="Operasional, Gaji, dll"
-                />
-              </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-foreground mb-1">Catatan</label>
                 <input
@@ -366,7 +353,6 @@ export default function Expenses() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[160px] sticky left-[150px] z-20 bg-muted backdrop-blur border-r border-border">Deskripsi</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px] sticky left-[310px] z-20 bg-muted backdrop-blur border-r border-border">Vendor</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Akun</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kategori</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jumlah</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aksi</th>
@@ -381,14 +367,6 @@ export default function Expenses() {
                     <td className="px-5 py-3 text-sm text-muted-foreground">
                       {exp.ledger.code} - {exp.ledger.name}
                     </td>
-                    <td className="px-5 py-3">
-                      {exp.category ? (
-                        <span className="badge badge-default">{exp.category}</span>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(exp.date)}</td>
                     <td className="px-5 py-3 text-sm text-right font-semibold text-destructive">{formatCurrency(exp.amount)}</td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
