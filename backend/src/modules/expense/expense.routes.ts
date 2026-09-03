@@ -38,6 +38,32 @@ export async function expenseRoutes(app: FastifyInstance) {
     }
   })
 
+  // LIST EXPENSE LEDGER ACCOUNTS (reference data for the expense form — scoped pengeluaran,
+  // not buku-besar, so pengeluaran-only staff can pick an Akun Beban)
+  app.get('/ledgers', {
+    schema: { tags: ['Biaya'], summary: 'List ledger accounts for expense form', security: [{ BearerAuth: [] }] },
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('pengeluaran')],
+  }, async (request: any) => {
+    const { tenantId } = request.user as any
+
+    const ledgers = await prisma.ledger.findMany({
+      where: { tenantId },
+      include: { parent: { select: { code: true, name: true } } },
+      orderBy: { code: 'asc' },
+    })
+
+    return ledgers.map((l: any) => ({
+      id: l.id,
+      code: l.code,
+      name: l.name,
+      type: l.type,
+      parentId: l.parentId,
+      parent: l.parent ? `${l.parent.code} - ${l.parent.name}` : null,
+      isSystem: l.isSystem,
+      isActive: l.isActive,
+    }))
+  })
+
   // GET SINGLE EXPENSE
   app.get('/:id', {
     schema: { tags: ['Biaya'], summary: 'Get an expense by ID', security: [{ BearerAuth: [] }] },

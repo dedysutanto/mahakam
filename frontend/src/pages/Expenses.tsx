@@ -50,12 +50,12 @@ export default function Expenses() {
   const fetchData = () => {
     Promise.all([
       fetch('/api/expenses/').then((r) => r.json()),
-      fetch('/api/ledgers/').then((r) => r.json()),
+      fetch('/api/expenses/ledgers').then((r) => { if (!r.ok) throw new Error(); return r.json() }),
       fetch('/api/customers/').then((r) => { if (!r.ok) throw new Error(); return r.json() }),
     ]).then(([expRes, ledRes, custRes]) => {
       setExpenses(expRes.data || expRes)
-      setLedgers(ledRes)
-      setVendors(custRes.data || custRes)
+      setLedgers(Array.isArray(ledRes) ? ledRes : [])
+      setVendors(Array.isArray(custRes.data || custRes) ? (custRes.data || custRes) : [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }
