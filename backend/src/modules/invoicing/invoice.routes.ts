@@ -438,7 +438,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
         data: {
           tenantId,
           journalNumber: `JE-${paymentNumber}`,
-          date: new Date(),
+          date: invoice.issueDate,
           description: `Pembayaran ${invoice.invoiceNumber}`,
           referenceType: 'payment',
           referenceId: payment.id,
