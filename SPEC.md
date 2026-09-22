@@ -2,7 +2,7 @@
 
 ## §G — goal
 
-Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company.
+Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company. Standalone MCP server for LLM tool access (read-only query of invoices, expenses, ledger, reports, dashboard).
 
 ## §C — constraints
 
@@ -42,6 +42,22 @@ REST API under `/api`, auth via JWT Bearer token or API key Bearer token (401 mi
 Env vars: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `APP_VERSION`, `NODE_ENV`, `PORT`.
 
 Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:16). Standalone compose + swarm stack with replicas/healthchecks. Images: `ghcr.io/dedysutanto/mahakam-backend`, `ghcr.io/dedysutanto/mahakam-frontend`.
+
+MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
+- Auth: env vars `MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY` (Bearer `mk_live_…` forwarded to REST API).
+- Read-only: no POST/PUT/DELETE tools.
+- Tools:
+  - `get_dashboard(period?)` → dashboard overview stats (no scope — open to all members)
+  - `list_invoices(status?, customerId?, dateFrom?, dateTo?, page?)` → paginated invoice list (scope `faktur`)
+  - `get_invoice(id)` → single invoice with items + payments (scope `faktur`)
+  - `list_expenses(category?, dateFrom?, dateTo?, page?)` → paginated expense list (scope `pengeluaran`)
+  - `get_expense(id)` → single expense (scope `pengeluaran`)
+  - `list_ledgers()` → chart of accounts (scope `buku-besar`)
+  - `get_profit_loss(dateFrom?, dateTo?)` → income statement / laba rugi (scope `laporan`)
+  - `get_balance_sheet(dateTo?)` → balance sheet / neraca (scope `laporan`)
+  - `get_cash_flow(dateFrom?, dateTo?)` → cash flow statement / arus kas (scope `laporan`)
+- Auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore`.
+- 403 error response: `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }`.
 
 ## §V — invariants
 
@@ -90,6 +106,9 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 - V43: Numbering regex capture group fix — the sequence extraction regex `^\d+.*dateAnchor.*$` lacked a capture group around `\d+`, so `m[1]` was always undefined and sequence always started at 1. Fixed by wrapping in `^(\d+).*dateAnchor.*$`.
 - V47: Expense form account dropdown data comes from `GET /api/expenses/ledgers` (scope `pengeluaran`), never `GET /api/ledgers` (`buku-besar`); the Expenses page guards every list response with `Array.isArray` before storing to state. A form's datalist endpoints must be reachable under the form's own write scope — `buku-besar` read scope is never required to create a `pengeluaran`-scoped expense (B40).
 - V48: Dashboard/Laba Rugi revenue is accrual — a payment's journal entry is dated with the **invoice's `issueDate`** (not the payment day), so revenue lands in the invoice month regardless of when cash arrives. Backfill migration re-dates existing payment JEs to `issueDate`; new payments record `date: invoice.issueDate` at posting. (T69)
+- V49: MCP server authenticates Mahakam API via Bearer API key only (`mk_live_…`). `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` env vars; no JWT auth. On 403 response, MCP tool must return `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }` — never raw HTTP body. (T70-T72)
+- V50: MCP server is read-only — no POST/PUT/DELETE tools. Writes added later with explicit user confirmation flow. (T70-T72)
+- V51: MCP server auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore` so LLM knows to paginate. (T70-T72)
 
 ## §T — tasks
 
@@ -164,6 +183,9 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T67 | x | Expense form account dropdown sourced from new `GET /api/expenses/ledgers` (scope `pengeluaran`), not `GET /api/ledgers` (`buku-besar`) — pengeluaran-scoped staff can create expenses; Expenses page guards list responses with `Array.isArray` so API errors degrade to an empty dropdown instead of a render crash | V47,B40 |
 | T69 | x | Dashboard revenue accrual: payment journal entries dated with invoice `issueDate` (not payment day) so revenue counts in the invoice month; backfill migration re-dates existing payment JEs; matches user ask "calculate pendapatan on invoice date" | V48 |
 | T68 | x | Expense form + table drop the "Kategori" free-text field — it duplicated the Akun Beban (ledger) classification; backend `category` column, report byCategory, and API filter remain unchanged (UI-only removal) | |
+| T70 | x | MCP server scaffold: `mcp/` dir, `package.json`, `tsconfig.json`, `src/index.ts` entry point, stdio transport via `@modelcontextprotocol/sdk`, env var config (`MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY`), basic healthcheck tool | V49 |
+| T71 | x | MCP tools: `get_dashboard`, `list_invoices`, `get_invoice`, `list_expenses`, `get_expense`, `list_ledgers`, `get_profit_loss`, `get_balance_sheet`, `get_cash_flow` — each wraps Mahakam REST endpoint with Bearer auth, auto-paginate list tools (limit=50, totalCount+hasMore), structured 403 error response | V49,V50,V51 |
+| T72 | x | OpenCode MCP config: add `mcpServers.mahakam` entry to `opencode.json` with `command: "npx"`, `args: ["tsx", "mcp/src/index.ts"]`, env vars `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` | V49 |
 
 ## §B — bugs
 

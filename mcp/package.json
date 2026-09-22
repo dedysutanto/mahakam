@@ -1,0 +1,19 @@
+{
+  "name": "mahakam-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "mahakam-mcp": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
