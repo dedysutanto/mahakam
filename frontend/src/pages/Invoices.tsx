@@ -9,6 +9,7 @@ import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Walle
 
 interface InvoiceItem {
   description: string
+  productDescription?: string
   quantity: number
   unitPrice: number
   discount: number
@@ -114,7 +115,7 @@ export default function Invoices() {
       issueDate: toDateInput(now),
       dueDate: toDateInput(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
       taxId: '',
-      items: [{ productId: '', unit: 'unit', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
+      items: [{ productId: '', unit: 'unit', description: '', productDescription: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
       notes: '',
       terms: '',
     }
@@ -435,6 +436,7 @@ export default function Invoices() {
           productId: matched?.id || '',
           unit: it.unit || matched?.unit || 'unit',
           description: it.description,
+          productDescription: it.product?.description || '',
           quantity: Number(it.quantity),
           unitPrice: Number(it.unitPrice),
           discount: Number(it.discount ?? 0),
@@ -552,6 +554,7 @@ export default function Invoices() {
       return {
         productId: pid,
         description: it.description,
+        productDescription: it.product?.description || '',
         quantity: Number(it.quantity),
         unitPrice: Number(it.unitPrice),
         discount: Number(it.discount ?? 0),
@@ -866,7 +869,7 @@ export default function Invoices() {
                       <tbody className="divide-y divide-border">
                         {formData.items.map((item, idx) => (
                           <tr key={idx}>
-                            <td className="px-3 py-2 text-foreground">{item.description || '-'}</td>
+                            <td className="px-3 py-2 text-foreground">{(item.productDescription || '').trim() || item.description || '-'}</td>
                             <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)}{item.unit ? ' ' + item.unit : ''}</td>
                             <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(Number(item.unitPrice))}</td>
                             {hasDiscount && (
@@ -1075,7 +1078,7 @@ export default function Invoices() {
                     onClick={() =>
                       setFormData({
                         ...formData,
-                        items: [...formData.items, { productId: '', unit: 'unit', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
+                        items: [...formData.items, { productId: '', unit: 'unit', description: '', productDescription: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: false }],
                       })
                     }
                   >
@@ -1087,7 +1090,7 @@ export default function Invoices() {
                     onClick={() =>
                       setFormData({
                         ...formData,
-                        items: [...formData.items, { productId: '', unit: 'unit', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: true }],
+                        items: [...formData.items, { productId: '', unit: 'unit', description: '', productDescription: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, isManual: true }],
                       })
                     }
                   >

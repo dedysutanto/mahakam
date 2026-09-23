@@ -4,6 +4,8 @@
 
 Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company.
 
+- Sub-goal: item baris faktur (web detail + PDF) menampilkan deskripsi produk bila ada — fallback ke deskripsi baris.
+
 ## §C — constraints
 
 - Language: Bahasa Indonesia primary.
@@ -17,6 +19,7 @@ Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first R
 - Company admin cannot edit/delete the company's last active admin.
 - Deploy: Docker (standalone compose + swarm stack), postgres:16-alpine, nginx for frontend.
 - Out of scope: complex tax engine (basic rates only), AP three-way matching/approvals/SLA, blockchain/crypto.
+- Invoice line rendering: text = `product.description` if product exists AND description non-empty, else line `description` (fallback). Manual items (no product) unchanged. Live join from Prisma `item.product` — no schema change/migration. Web detail cell (`Invoices.tsx`) + PDF desc column (`pdf.ts`) share one fallback pattern; backend GET/PDF already `include items.product`, no API change. Scope: invoices only — quotations out of scope.
 
 ## §I — interfaces
 
@@ -164,6 +167,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 | T67 | x | Expense form account dropdown sourced from new `GET /api/expenses/ledgers` (scope `pengeluaran`), not `GET /api/ledgers` (`buku-besar`) — pengeluaran-scoped staff can create expenses; Expenses page guards list responses with `Array.isArray` so API errors degrade to an empty dropdown instead of a render crash | V47,B40 |
 | T69 | x | Dashboard revenue accrual: payment journal entries dated with invoice `issueDate` (not payment day) so revenue counts in the invoice month; backfill migration re-dates existing payment JEs; matches user ask "calculate pendapatan on invoice date" | V48 |
 | T68 | x | Expense form + table drop the "Kategori" free-text field — it duplicated the Akun Beban (ledger) classification; backend `category` column, report byCategory, and API filter remain unchanged (UI-only removal) | |
+| T70 | x | Invoice line description shows live `product.description` when non-empty, else line description — web detail view (both mappers carry flat `productDescription`, view cell falls back) + invoice PDF desc column (single `descText` used for height and text); manual/no-product items unchanged | — |
 
 ## §B — bugs
 

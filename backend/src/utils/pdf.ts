@@ -239,7 +239,8 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
 
   doc.font(t.body).fontSize(9).fillColor(t.text)
   invoice.items.forEach((item: typeof invoice.items[number], idx: number) => {
-    const descH = doc.heightOfString(item.description || '-', { width: colDesc.w })
+    const descText = (item.product?.description || '').trim() || item.description || '-'
+    const descH = doc.heightOfString(descText, { width: colDesc.w })
     const rowH = Math.max(20, descH + 10)
 
     if (rowY + rowH > PAGE.bottomLimit) {
@@ -256,7 +257,7 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
 
     const textY = rowY + 5
     doc.fillColor(t.text)
-    doc.text(item.description || '-', colDesc.x, textY, { width: colDesc.w })
+    doc.text(descText, colDesc.x, textY, { width: colDesc.w })
     doc.text(`${Number(item.quantity)} ${item.unit || item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
     if (hasAnyDiscount) {
