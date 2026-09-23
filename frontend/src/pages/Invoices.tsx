@@ -860,6 +860,7 @@ export default function Invoices() {
                       <thead>
                         <tr className="border-b border-border bg-muted">
                           <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Item</th>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Deskripsi</th>
                           <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Qty</th>
                           <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Harga</th>
                           {hasDiscount && <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Diskon</th>}
@@ -869,7 +870,8 @@ export default function Invoices() {
                       <tbody className="divide-y divide-border">
                         {formData.items.map((item, idx) => (
                           <tr key={idx}>
-                            <td className="px-3 py-2 text-foreground">{(item.productDescription || '').trim() || item.description || '-'}</td>
+                            <td className="px-3 py-2 text-foreground">{item.description || '-'}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{(item.productDescription || '').trim() || '-'}</td>
                             <td className="px-3 py-2 text-right text-muted-foreground">{Number(item.quantity)}{item.unit ? ' ' + item.unit : ''}</td>
                             <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(Number(item.unitPrice))}</td>
                             {hasDiscount && (

@@ -80,6 +80,9 @@ const W = PAGE.right - PAGE.left
 
 // Column geometry — every numeric column shares the right edge chain, last ends at PAGE.right
 const colDesc = { x: PAGE.left + 4, w: 246 }
+// Invoice table: Item + Deskripsi split the old 246pt slot (quotation table keeps colDesc above).
+const colItem = { x: PAGE.left + 4, w: 108 }
+const colProd = { x: PAGE.left + 118, w: 132 }
 const colQty = { x: 272, w: 48 }
 const colPrice = { x: 326, w: 82 }
 const colDisc = { x: 412, w: 64 }
@@ -212,7 +215,8 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
     if (t.headerBg) {
       doc.save().rect(PAGE.left, rowY, W, 22).fill(t.headerBg).restore()
       doc.font(t.bold).fontSize(8).fillColor(t.headerText)
-      doc.text('Item', colDesc.x, rowY + 7, { width: colDesc.w })
+      doc.text('Item', colItem.x, rowY + 7, { width: colItem.w })
+      doc.text('Deskripsi', colProd.x, rowY + 7, { width: colProd.w })
       doc.text('Qty', colQty.x, rowY + 7, { width: colQty.w, align: 'right' })
       doc.text('Harga', colPrice.x, rowY + 7, { width: colPrice.w, align: 'right' })
       if (hasAnyDiscount) doc.text('Diskon', colDisc.x, rowY + 7, { width: colDisc.w, align: 'right' })
@@ -220,7 +224,8 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
       return rowY + 22
     }
     doc.font(t.bold).fontSize(8).fillColor(t.headerText === t.title ? t.title : t.headerText)
-    doc.text('ITEM', colDesc.x, rowY, { width: colDesc.w, characterSpacing: 0.5 })
+    doc.text('ITEM', colItem.x, rowY, { width: colItem.w, characterSpacing: 0.5 })
+    doc.text('DESKRIPSI', colProd.x, rowY, { width: colProd.w, characterSpacing: 0.5 })
     doc.text('QTY', colQty.x, rowY, { width: colQty.w, align: 'right', characterSpacing: 0.5 })
     doc.text('HARGA', colPrice.x, rowY, { width: colPrice.w, align: 'right', characterSpacing: 0.5 })
     if (hasAnyDiscount) doc.text('DISKON', colDisc.x, rowY, { width: colDisc.w, align: 'right', characterSpacing: 0.5 })
@@ -239,9 +244,11 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
 
   doc.font(t.body).fontSize(9).fillColor(t.text)
   invoice.items.forEach((item: typeof invoice.items[number], idx: number) => {
-    const descText = (item.product?.description || '').trim() || item.description || '-'
-    const descH = doc.heightOfString(descText, { width: colDesc.w })
-    const rowH = Math.max(20, descH + 10)
+    const itemText = item.description || '-'
+    const prodText = (item.product?.description || '').trim() || '-'
+    const itemH = doc.heightOfString(itemText, { width: colItem.w })
+    const prodH = doc.heightOfString(prodText, { width: colProd.w })
+    const rowH = Math.max(20, itemH + 10, prodH + 10)
 
     if (rowY + rowH > PAGE.bottomLimit) {
       doc.addPage()
@@ -257,7 +264,8 @@ async function renderInvoiceInto(doc: PDFKit.PDFDocument, invoice: InvoiceFull, 
 
     const textY = rowY + 5
     doc.fillColor(t.text)
-    doc.text(descText, colDesc.x, textY, { width: colDesc.w })
+    doc.text(itemText, colItem.x, textY, { width: colItem.w })
+    doc.text(prodText, colProd.x, textY, { width: colProd.w })
     doc.text(`${Number(item.quantity)} ${item.unit || item.product?.unit || ''}`, colQty.x, textY, { width: colQty.w, align: 'right' })
     doc.text(currency(Number(item.unitPrice)), colPrice.x, textY, { width: colPrice.w, align: 'right' })
     if (hasAnyDiscount) {
