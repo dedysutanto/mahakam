@@ -2,7 +2,7 @@
 
 ## §G — goal
 
-Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company. Standalone MCP server for LLM tool access (read-only query of invoices, expenses, ledger, reports, dashboard).
+Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company. Standalone MCP server for LLM tool access (read-only query of invoices, expenses, ledger, reports, dashboard) + PDF download (invoice, quotation, recap).
 
 ## §C — constraints
 
@@ -44,8 +44,8 @@ Env vars: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `SUPER_ADMIN_EMAIL`, `SUP
 Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:16). Standalone compose + swarm stack with replicas/healthchecks. Images: `ghcr.io/dedysutanto/mahakam-backend`, `ghcr.io/dedysutanto/mahakam-frontend`.
 
 MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
-- Auth: env vars `MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY` (Bearer `mk_live_…` forwarded to REST API).
-- Read-only: no POST/PUT/DELETE tools.
+- Auth: env vars `MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY` (Bearer `mk_live_…` forwarded to REST API); download dir env `MAHAKAM_PDF_DIR`, default `./mahakam-pdfs`.
+- Read-only: no PUT/DELETE tools; POST only for document-generating endpoints (recap PDF), never data mutation.
 - Tools:
   - `get_dashboard(period?)` → dashboard overview stats (no scope — open to all members)
   - `list_invoices(status?, customerId?, dateFrom?, dateTo?, page?)` → paginated invoice list (scope `faktur`)
@@ -56,6 +56,9 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
   - `get_profit_loss(dateFrom?, dateTo?)` → income statement / laba rugi (scope `laporan`)
   - `get_balance_sheet(dateTo?)` → balance sheet / neraca (scope `laporan`)
   - `get_cash_flow(dateFrom?, dateTo?)` → cash flow statement / arus kas (scope `laporan`)
+  - `download_invoice_pdf(id)` → fetch invoice PDF, save to disk, return absolute path (scope `faktur`)
+  - `download_quotation_pdf(id)` → fetch quotation PDF, save to disk, return absolute path (scope `penawaran`)
+  - `download_recap_pdf(ids[])` → fetch recap PDF (POST generate-only), save to disk, return absolute path (scope `faktur`)
 - Auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore`.
 - 403 error response: `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }`.
 
@@ -107,8 +110,10 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 - V47: Expense form account dropdown data comes from `GET /api/expenses/ledgers` (scope `pengeluaran`), never `GET /api/ledgers` (`buku-besar`); the Expenses page guards every list response with `Array.isArray` before storing to state. A form's datalist endpoints must be reachable under the form's own write scope — `buku-besar` read scope is never required to create a `pengeluaran`-scoped expense (B40).
 - V48: Dashboard/Laba Rugi revenue is accrual — a payment's journal entry is dated with the **invoice's `issueDate`** (not the payment day), so revenue lands in the invoice month regardless of when cash arrives. Backfill migration re-dates existing payment JEs to `issueDate`; new payments record `date: invoice.issueDate` at posting. (T69)
 - V49: MCP server authenticates Mahakam API via Bearer API key only (`mk_live_…`). `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` env vars; no JWT auth. On 403 response, MCP tool must return `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }` — never raw HTTP body. (T70-T72)
-- V50: MCP server is read-only — no POST/PUT/DELETE tools. Writes added later with explicit user confirmation flow. (T70-T72)
+- V50: MCP server never mutates — no PUT/DELETE tools; POST allowed only for document-generating endpoints (recap PDF). Data-write tools added later with explicit user confirmation flow. (T70-T72,T73)
 - V51: MCP server auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore` so LLM knows to paginate. (T70-T72)
+- V52: MCP PDF downloads write to `MAHAKAM_PDF_DIR` (default `./mahakam-pdfs`); `id`/`ids[]` validated against `^[a-z0-9]+$` before URL/filename use (trust boundary); `mkdir` recursive before write; invoice/quotation files overwrite on regeneration (id = one document); recap filename MUST distinguish id sets (hash of sorted `ids`) so distinct recaps never share a path; tool returns absolute path. (T73)
+- V53: MCP PDF tools write the file only on HTTP 200 with `Content-Type: application/pdf`; any other response returns `{ error: true, message, statusCode }` and leaves no file behind — failed fetches never masquerade as PDFs at the promised path. (T73)
 
 ## §T — tasks
 
@@ -186,6 +191,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 | T70 | x | MCP server scaffold: `mcp/` dir, `package.json`, `tsconfig.json`, `src/index.ts` entry point, stdio transport via `@modelcontextprotocol/sdk`, env var config (`MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY`), basic healthcheck tool | V49 |
 | T71 | x | MCP tools: `get_dashboard`, `list_invoices`, `get_invoice`, `list_expenses`, `get_expense`, `list_ledgers`, `get_profit_loss`, `get_balance_sheet`, `get_cash_flow` — each wraps Mahakam REST endpoint with Bearer auth, auto-paginate list tools (limit=50, totalCount+hasMore), structured 403 error response | V49,V50,V51 |
 | T72 | x | OpenCode MCP config: add `mcpServers.mahakam` entry to `opencode.json` with `command: "npx"`, `args: ["tsx", "mcp/src/index.ts"]`, env vars `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` | V49 |
+| T73 | x | MCP PDF tools: `download_invoice_pdf`, `download_quotation_pdf`, `download_recap_pdf` — fetch PDF bytes, save to `MAHAKAM_PDF_DIR`, return absolute path; id validation + mkdir recursive; recap filename = id-set hash; write only on 200 + `application/pdf`; V50 amended (recap POST generate-only) | V50,V52,V53 |
 
 ## §B — bugs
 

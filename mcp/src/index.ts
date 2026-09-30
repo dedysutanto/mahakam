@@ -2,7 +2,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
-import { mahakamFetch, mahakamFetchPaginated } from "./client.js"
+import { mahakamFetch, mahakamFetchPaginated, mahakamFetchPdf } from "./client.js"
+import { ID_MSG, ID_RE, recapHash, savePdf } from "./pdf.js"
 
 const server = new McpServer({
   name: "mahakam",
@@ -129,6 +130,43 @@ server.tool(
   async ({ dateFrom, dateTo }) => {
     const result = await mahakamFetch("/reports/arus-kas", "laporan", { dateFrom, dateTo })
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
+  }
+)
+
+
+// --- PDF downloads (V50: recap POST is generate-only; V52/V53: id gate, safe write) ---
+const text = (payload: unknown) => ({
+  content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
+})
+
+server.tool(
+  "download_invoice_pdf",
+  "Download invoice PDF to disk; returns absolute file path",
+  { id: z.string().describe("Invoice ID") },
+  async ({ id }) => {
+    if (!ID_RE.test(id)) return text({ error: true, message: ID_MSG, statusCode: 400 })
+    return text(await savePdf(`faktur-${id}.pdf`, await mahakamFetchPdf(`/invoices/${id}/pdf`, "faktur")))
+  }
+)
+
+server.tool(
+  "download_quotation_pdf",
+  "Download quotation PDF to disk; returns absolute file path",
+  { id: z.string().describe("Quotation ID") },
+  async ({ id }) => {
+    if (!ID_RE.test(id)) return text({ error: true, message: ID_MSG, statusCode: 400 })
+    return text(await savePdf(`penawaran-${id}.pdf`, await mahakamFetchPdf(`/quotations/${id}/pdf`, "penawaran")))
+  }
+)
+
+server.tool(
+  "download_recap_pdf",
+  "Generate recap billing statement PDF for selected invoices (must all belong to one customer) and download to disk; returns absolute file path",
+  { ids: z.array(z.string()).min(1).describe("Invoice IDs (same customer)") },
+  async ({ ids }) => {
+    if (!ids.every((x) => ID_RE.test(x))) return text({ error: true, message: ID_MSG, statusCode: 400 })
+    const fetched = await mahakamFetchPdf("/invoices/recap", "faktur", "POST", { ids })
+    return text(await savePdf(`rekap-penagihan-${recapHash(ids)}.pdf`, fetched))
   }
 )
 

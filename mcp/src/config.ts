@@ -13,4 +13,5 @@ if (!API_KEY) {
 export const config = {
   baseUrl: BASE_URL.replace(/\/$/, ""),
   apiKey: API_KEY,
+  pdfDir: process.env.MAHAKAM_PDF_DIR || "./mahakam-pdfs",
 }

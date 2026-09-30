@@ -77,3 +77,41 @@ export async function mahakamFetchPaginated<T>(
     page: currentPage,
   }
 }
+
+export type PdfResult = { bytes: Uint8Array } | MahakamError
+
+// V53: only HTTP 200 + application/pdf yields bytes; anything else is an error object, never a file.
+export async function mahakamFetchPdf(
+  path: string,
+  scope: string,
+  method: "GET" | "POST" = "GET",
+  body?: unknown
+): Promise<PdfResult> {
+  const url = new URL(`/api${path}`, config.baseUrl)
+  const res = await fetch(url.toString(), {
+    method,
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  })
+
+  if (res.status === 403) {
+    return {
+      error: true,
+      message: `Scope '${scope}' required but not granted on this API key. Add scope in Settings → API Keys.`,
+      statusCode: 403,
+    }
+  }
+  const contentType = res.headers.get("content-type") || ""
+  if (res.status !== 200 || !contentType.includes("application/pdf")) {
+    const snippet = await res.text().catch(() => "")
+    return {
+      error: true,
+      message: `Mahakam API error ${res.status}: ${snippet.slice(0, 300) || res.statusText}`,
+      statusCode: res.status,
+    }
+  }
+  return { bytes: new Uint8Array(await res.arrayBuffer()) }
+}
