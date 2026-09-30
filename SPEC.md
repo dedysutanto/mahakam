@@ -4,6 +4,8 @@
 
 Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company. Standalone MCP server for LLM tool access (read-only query of invoices, expenses, ledger, reports, dashboard) + PDF download (invoice, quotation, recap).
 
+- Sub-goal: baris item faktur (web detail + PDF) — kolom "Item" tetap menampilkan nilai baris (nama item, tidak tertimpa); kolom "Deskripsi" baru khusus menampilkan deskripsi produk bila ada.
+
 ## §C — constraints
 
 - Language: Bahasa Indonesia primary.
@@ -17,6 +19,7 @@ Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first R
 - Company admin cannot edit/delete the company's last active admin.
 - Deploy: Docker (standalone compose + swarm stack), postgres:16-alpine, nginx for frontend.
 - Out of scope: complex tax engine (basic rates only), AP three-way matching/approvals/SLA, blockchain/crypto.
+- Invoice line rendering: TWO columns — "Item" keeps the line description (item value, never overwritten); dedicated "Deskripsi" column shows live `product.description` when non-empty, `-` when absent (manual items always `-`). Web detail (`Invoices.tsx`; both mappers carry flat `productDescription`) + PDF (`pdf.ts`: new `colItem` 108pt + `colProd` 132pt split the old 246pt slot; module `colDesc` 246pt stays for the quotation table so quotation layout is untouched; row height = max(item text, product text)). Live join from Prisma `item.product` — no schema change/migration; backend GET/PDF already `include items.product`, no API change. Scope: invoices only — quotations out of scope.
 
 ## §I — interfaces
 
@@ -188,10 +191,11 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 | T67 | x | Expense form account dropdown sourced from new `GET /api/expenses/ledgers` (scope `pengeluaran`), not `GET /api/ledgers` (`buku-besar`) — pengeluaran-scoped staff can create expenses; Expenses page guards list responses with `Array.isArray` so API errors degrade to an empty dropdown instead of a render crash | V47,B40 |
 | T69 | x | Dashboard revenue accrual: payment journal entries dated with invoice `issueDate` (not payment day) so revenue counts in the invoice month; backfill migration re-dates existing payment JEs; matches user ask "calculate pendapatan on invoice date" | V48 |
 | T68 | x | Expense form + table drop the "Kategori" free-text field — it duplicated the Akun Beban (ledger) classification; backend `category` column, report byCategory, and API filter remain unchanged (UI-only removal) | |
-| T70 | x | MCP server scaffold: `mcp/` dir, `package.json`, `tsconfig.json`, `src/index.ts` entry point, stdio transport via `@modelcontextprotocol/sdk`, env var config (`MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY`), basic healthcheck tool | V49 |
-| T71 | x | MCP tools: `get_dashboard`, `list_invoices`, `get_invoice`, `list_expenses`, `get_expense`, `list_ledgers`, `get_profit_loss`, `get_balance_sheet`, `get_cash_flow` — each wraps Mahakam REST endpoint with Bearer auth, auto-paginate list tools (limit=50, totalCount+hasMore), structured 403 error response | V49,V50,V51 |
-| T72 | x | OpenCode MCP config: add `mcpServers.mahakam` entry to `opencode.json` with `command: "npx"`, `args: ["tsx", "mcp/src/index.ts"]`, env vars `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` | V49 |
-| T73 | x | MCP PDF tools: `download_invoice_pdf`, `download_quotation_pdf`, `download_recap_pdf` — fetch PDF bytes, save to `MAHAKAM_PDF_DIR`, return absolute path; id validation + mkdir recursive; recap filename = id-set hash; write only on 200 + `application/pdf`; V50 amended (recap POST generate-only) | V50,V52,V53 |
+| T70 | x | Invoice lines: Item column keeps line value (name); NEW dedicated "Deskripsi" column shows live `product.description` — web detail view (flat `productDescription` in both mappers) + invoice PDF (`colItem`+`colProd` split old `colDesc` slot, row height = max of both texts; quotation keeps `colDesc`, layout untouched); manual items show `-` | — |
+| T71 | x | MCP server scaffold: `mcp/` dir, `package.json`, `tsconfig.json`, `src/index.ts` entry point, stdio transport via `@modelcontextprotocol/sdk`, env var config (`MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY`), basic healthcheck tool | V49 |
+| T72 | x | MCP tools: `get_dashboard`, `list_invoices`, `get_invoice`, `list_expenses`, `get_expense`, `list_ledgers`, `get_profit_loss`, `get_balance_sheet`, `get_cash_flow` — each wraps Mahakam REST endpoint with Bearer auth, auto-paginate list tools (limit=50, totalCount+hasMore), structured 403 error response | V49,V50,V51 |
+| T73 | x | OpenCode MCP config: add `mcpServers.mahakam` entry to `opencode.json` with `command: "npx"`, `args: ["tsx", "mcp/src/index.ts"]`, env vars `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` | V49 |
+| T74 | x | MCP PDF tools: `download_invoice_pdf`, `download_quotation_pdf`, `download_recap_pdf` — fetch PDF bytes, save `MAHAKAM_PDF_DIR`, return absolute path; id validation + mkdir recursive; recap filename = id-set hash; write only on 200 + `application/pdf`; V50 amended (recap POST generate-only) | V50,V52,V53 |
 
 ## §B — bugs
 
