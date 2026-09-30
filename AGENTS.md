@@ -1,7 +1,7 @@
 # AGENTS.md — Mahakam
 
 Sistem Informasi Keuangan multi-tenant (SaaS akuntansi + invoice) untuk bisnis Indonesia.
-Repo: `github.com/dedysutanto/mahakam`. Deploy: `https://app.ptosb.com` (web) / `https://m.app.ptosb.com` (mobile).
+Repo: `github.com/dedysutanto/mahakam`. Deploy: `https://m.app.ptosb.com` (web + API; `app.ptosb.com` no longer resolves).
 
 ## Tech stack
 

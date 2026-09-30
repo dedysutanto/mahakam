@@ -94,7 +94,7 @@ Standalone stdio MCP server (`mcp/`) wraps the REST API for LLM clients (OpenCod
 
 ```bash
 cd mcp && npm ci
-export MAHAKAM_BASE_URL=https://app.ptosb.com MAHAKAM_API_KEY=mk_live_...
+export MAHAKAM_BASE_URL=https://m.app.ptosb.com MAHAKAM_API_KEY=mk_live_...
 npx tsx src/index.ts      # stdio
 ```
 
@@ -104,7 +104,7 @@ OpenCode: `opencode.json` already declares `mcp.servers.mahakam` (env `MAHAKAM_A
 
 ```json
 { "mcpServers": { "mahakam": { "command": "npx", "args": ["tsx", "/abs/path/mahakam/mcp/src/index.ts"],
-  "env": { "MAHAKAM_BASE_URL": "https://app.ptosb.com", "MAHAKAM_API_KEY": "mk_live_..." } } } }
+  "env": { "MAHAKAM_BASE_URL": "https://m.app.ptosb.com", "MAHAKAM_API_KEY": "mk_live_..." } } } }
 ```
 
 API key needs the matching per-module scopes (`faktur`, `pengeluaran`, `buku-besar`, `laporan`, `penawaran`); missing scope returns a structured message naming it. Optional `MAHAKAM_PDF_DIR` (default `./mahakam-pdfs`).
