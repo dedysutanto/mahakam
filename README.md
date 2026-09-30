@@ -98,7 +98,7 @@ export MAHAKAM_BASE_URL=https://m.app.ptosb.com MAHAKAM_API_KEY=mk_live_...
 npx tsx src/index.ts      # stdio
 ```
 
-Tools: dashboard, invoices (list/get/PDF by id or number), expenses, ledgers, laba rugi, neraca, arus kas, quotation PDF, recap PDF.
+Tools: dashboard, invoices (list/get/PDF by id or number), expenses, ledgers, laba rugi, neraca, arus kas, quotation PDF, recap PDF (ids or invoice numbers — one customer per recap).
 
 OpenCode: `opencode.json` already declares `mcp.servers.mahakam` (env `MAHAKAM_API_KEY`). Claude Desktop / other clients:
 

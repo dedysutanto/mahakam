@@ -25,10 +25,10 @@ export async function savePdf(filename: string, fetched: PdfResult) {
   return { path: filePath, filename }
 }
 
-// V54: input is id (direct) or invoice number (exact list filter). Non-id input never
-// touches the URL path or filename - only the querystring - resolved id is re-gated.
-// Response must echo the requested number: guards against a backend without the filter
-// (which would silently return an unrelated newest invoice).
+// V54: input is id (direct) or invoice number (exact list filter). Non-id input never touches
+// the URL path or filename - only the querystring - and the resolved id is re-gated against ID_RE.
+// The response must echo the requested number, guarding a backend without the filter (which
+// would otherwise silently resolve to an unrelated newest invoice).
 export async function resolveInvoiceId(input: string): Promise<{ id: string } | MahakamError> {
   if (ID_RE.test(input)) return { id: input }
   const found = await mahakamFetch<{ data: { id: string; invoiceNumber: string }[] }>("/invoices", "faktur", {
@@ -40,4 +40,14 @@ export async function resolveInvoiceId(input: string): Promise<{ id: string } | 
   if (!match) return { error: true, message: "Nomor faktur tidak ditemukan", statusCode: 404 }
   if (!ID_RE.test(match.id)) return { error: true, message: ID_MSG, statusCode: 400 }
   return { id: match.id }
+}
+
+// T76: recap takes id lists, so it needs the same id-or-number resolution as the single-invoice
+// tool. All-or-nothing: any unresolved number aborts the whole set (no partial recap).
+// Lookups run concurrently, order preserved. Ceiling: one request per number passed in.
+export async function resolveInvoiceIds(inputs: string[]): Promise<{ ids: string[] } | MahakamError> {
+  const resolved = await Promise.all(inputs.map(resolveInvoiceId))
+  const err = resolved.find((r): r is MahakamError => "error" in r)
+  if (err) return err
+  return { ids: resolved.map((r) => (r as { id: string }).id) }
 }

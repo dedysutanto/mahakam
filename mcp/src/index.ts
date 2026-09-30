@@ -3,11 +3,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { mahakamFetch, mahakamFetchPaginated, mahakamFetchPdf } from "./client.js"
-import { ID_MSG, ID_RE, recapHash, resolveInvoiceId, savePdf } from "./pdf.js"
+import { ID_MSG, ID_RE, recapHash, resolveInvoiceId, resolveInvoiceIds, savePdf } from "./pdf.js"
 
 const server = new McpServer({
   name: "mahakam",
-  version: "1.0.0",
+  version: "1.1.0",
 })
 
 // --- healthcheck ---
@@ -162,12 +162,18 @@ server.tool(
 
 server.tool(
   "download_recap_pdf",
-  "Generate recap billing statement PDF for selected invoices (must all belong to one customer) and download to disk; returns absolute file path",
-  { ids: z.array(z.string()).min(1).describe("Invoice IDs (same customer)") },
+  "Generate recap billing statement PDF for selected invoices (must all belong to one customer) and download to disk; accepts invoice IDs or invoice numbers; returns absolute file path",
+  {
+    ids: z
+      .array(z.string().min(1).max(100))
+      .min(1)
+      .describe("Invoice IDs or invoice numbers (all one customer)"),
+  },
   async ({ ids }) => {
-    if (!ids.every((x) => ID_RE.test(x))) return text({ error: true, message: ID_MSG, statusCode: 400 })
-    const fetched = await mahakamFetchPdf("/invoices/recap", "faktur", "POST", { ids })
-    return text(await savePdf(`rekap-penagihan-${recapHash(ids)}.pdf`, fetched))
+    const resolved = await resolveInvoiceIds(ids)
+    if ("error" in resolved) return text(resolved)
+    const fetched = await mahakamFetchPdf("/invoices/recap", "faktur", "POST", { ids: resolved.ids })
+    return text(await savePdf(`rekap-penagihan-${recapHash(resolved.ids)}.pdf`, fetched))
   }
 )
 

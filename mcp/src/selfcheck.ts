@@ -19,8 +19,12 @@ const server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/pdf" }).end(PDF)
   } else if (req.url?.startsWith("/api/invoices?")) {
     const num = new URL(req.url, "http://localhost").searchParams.get("invoiceNumber")
+    const byNumber: Record<string, string> = {
+      "020/INVOICE/OSB/VIII/2026": "good123",
+      "021/INVOICE/OSB/VIII/2026": "good456",
+    }
     const data: { id: string; invoiceNumber: string }[] = []
-    if (num === "020/INVOICE/OSB/VIII/2026") data.push({ id: "good123", invoiceNumber: num })
+    if (byNumber[num ?? ""]) data.push({ id: byNumber[num!], invoiceNumber: num! })
     else if (num === "WRONG-1") data.push({ id: "good123", invoiceNumber: "OTHER-1" })
     res
       .writeHead(200, { "content-type": "application/json" })
@@ -43,7 +47,7 @@ async function main() {
   // Load-boundary exception: config.ts reads env at module load and exits when unset —
   // MAHAKAM_BASE_URL only exists after listen(), so these must load after env assignment.
   const { mahakamFetchPdf } = await import("./client.js")
-  const { ID_MSG, ID_RE, recapHash, resolveInvoiceId, savePdf } = await import("./pdf.js")
+  const { ID_MSG, ID_RE, recapHash, resolveInvoiceId, resolveInvoiceIds, savePdf } = await import("./pdf.js")
 
   // V53: 500 JSON → error object, never a file
   const miss = await mahakamFetchPdf("/invoices/miss999/pdf", "faktur")
@@ -98,6 +102,16 @@ async function main() {
   // V54: backend without the filter echoes a different number -> 404, never a wrong invoice
   const wrong = await resolveInvoiceId("WRONG-1")
   assert("error" in wrong && wrong.statusCode === 404, "V54: number mismatch -> 404, no wrong PDF")
+
+  // T76: recap resolves numbers too — cuids pass through, numbers resolve 1:1, order preserved
+  const batch = await resolveInvoiceIds(["good123", "021/INVOICE/OSB/VIII/2026"])
+  assert("ids" in batch && batch.ids.join(",") === "good123,good456", "T76: recap resolves ids and numbers")
+  const batchErr = await resolveInvoiceIds(["good123", "NOPE-9"])
+  assert("error" in batchErr && batchErr.statusCode === 404, "T76: unknown number aborts the whole recap")
+  await savePdf(
+    `rekap-penagihan-${recapHash(batch.ids)}.pdf`,
+    await mahakamFetchPdf("/invoices/recap", "faktur", "POST", { ids: batch.ids })
+  )
 
   rmSync(dir, { recursive: true, force: true })
   server.close()
