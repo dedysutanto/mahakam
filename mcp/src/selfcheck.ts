@@ -17,6 +17,14 @@ const server = createServer((req, res) => {
     res.writeHead(403, { "content-type": "application/json" }).end("{}")
   } else if (req.url === "/api/invoices/recap" && req.method === "POST") {
     res.writeHead(200, { "content-type": "application/pdf" }).end(PDF)
+  } else if (req.url?.startsWith("/api/invoices?")) {
+    const num = new URL(req.url, "http://localhost").searchParams.get("invoiceNumber")
+    const data: { id: string; invoiceNumber: string }[] = []
+    if (num === "020/INVOICE/OSB/VIII/2026") data.push({ id: "good123", invoiceNumber: num })
+    else if (num === "WRONG-1") data.push({ id: "good123", invoiceNumber: "OTHER-1" })
+    res
+      .writeHead(200, { "content-type": "application/json" })
+      .end(JSON.stringify({ data, pagination: { page: 1, limit: 1, total: data.length, totalPages: 1 } }))
   } else {
     res.writeHead(404).end()
   }
@@ -35,7 +43,7 @@ async function main() {
   // Load-boundary exception: config.ts reads env at module load and exits when unset —
   // MAHAKAM_BASE_URL only exists after listen(), so these must load after env assignment.
   const { mahakamFetchPdf } = await import("./client.js")
-  const { ID_MSG, ID_RE, recapHash, savePdf } = await import("./pdf.js")
+  const { ID_MSG, ID_RE, recapHash, resolveInvoiceId, savePdf } = await import("./pdf.js")
 
   // V53: 500 JSON → error object, never a file
   const miss = await mahakamFetchPdf("/invoices/miss999/pdf", "faktur")
@@ -75,6 +83,21 @@ async function main() {
   assert(!("error" in recap), "recap fetch ok")
   await savePdf(`rekap-penagihan-${recapHash(["a1"])}.pdf`, recap)
   assert(readdirSync(dir).filter((f) => f.endsWith(".pdf")).length === 2, "only successful PDFs on disk")
+
+  // V54: id passes direct, invoice number resolves via exact filter, unknown → structured 404
+  const direct = await resolveInvoiceId("good123")
+  assert("id" in direct && direct.id === "good123", "V54: id passes through without lookup")
+  const byNumber = await resolveInvoiceId("020/INVOICE/OSB/VIII/2026")
+  assert("id" in byNumber && byNumber.id === "good123", "V54: invoice number resolves to id")
+  const unknown = await resolveInvoiceId("NOPE-9")
+  assert(
+    "error" in unknown && unknown.statusCode === 404 && unknown.message === "Nomor faktur tidak ditemukan",
+    "V54: unknown invoice number → structured 404"
+  )
+
+  // V54: backend without the filter echoes a different number -> 404, never a wrong invoice
+  const wrong = await resolveInvoiceId("WRONG-1")
+  assert("error" in wrong && wrong.statusCode === 404, "V54: number mismatch -> 404, no wrong PDF")
 
   rmSync(dir, { recursive: true, force: true })
   server.close()

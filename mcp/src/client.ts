@@ -1,6 +1,6 @@
 import { config } from "./config.js"
 
-interface MahakamError {
+export interface MahakamError {
   error: true
   message: string
   statusCode: number

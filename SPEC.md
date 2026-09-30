@@ -59,7 +59,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
   - `get_profit_loss(dateFrom?, dateTo?)` → income statement / laba rugi (scope `laporan`)
   - `get_balance_sheet(dateTo?)` → balance sheet / neraca (scope `laporan`)
   - `get_cash_flow(dateFrom?, dateTo?)` → cash flow statement / arus kas (scope `laporan`)
-  - `download_invoice_pdf(id)` → fetch invoice PDF, save to disk, return absolute path (scope `faktur`)
+  - `download_invoice_pdf(id | invoiceNumber)` → fetch invoice PDF (number resolves via exact `invoiceNumber` list filter), save to disk, return absolute path (scope `faktur`)
   - `download_quotation_pdf(id)` → fetch quotation PDF, save to disk, return absolute path (scope `penawaran`)
   - `download_recap_pdf(ids[])` → fetch recap PDF (POST generate-only), save to disk, return absolute path (scope `faktur`)
 - Auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore`.
@@ -112,11 +112,13 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 - V43: Numbering regex capture group fix — the sequence extraction regex `^\d+.*dateAnchor.*$` lacked a capture group around `\d+`, so `m[1]` was always undefined and sequence always started at 1. Fixed by wrapping in `^(\d+).*dateAnchor.*$`.
 - V47: Expense form account dropdown data comes from `GET /api/expenses/ledgers` (scope `pengeluaran`), never `GET /api/ledgers` (`buku-besar`); the Expenses page guards every list response with `Array.isArray` before storing to state. A form's datalist endpoints must be reachable under the form's own write scope — `buku-besar` read scope is never required to create a `pengeluaran`-scoped expense (B40).
 - V48: Dashboard/Laba Rugi revenue is accrual — a payment's journal entry is dated with the **invoice's `issueDate`** (not the payment day), so revenue lands in the invoice month regardless of when cash arrives. Backfill migration re-dates existing payment JEs to `issueDate`; new payments record `date: invoice.issueDate` at posting. (T69)
-- V49: MCP server authenticates Mahakam API via Bearer API key only (`mk_live_…`). `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` env vars; no JWT auth. On 403 response, MCP tool must return `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }` — never raw HTTP body. (T70-T72)
-- V50: MCP server never mutates — no PUT/DELETE tools; POST allowed only for document-generating endpoints (recap PDF). Data-write tools added later with explicit user confirmation flow. (T70-T72,T73)
-- V51: MCP server auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore` so LLM knows to paginate. (T70-T72)
-- V52: MCP PDF downloads write to `MAHAKAM_PDF_DIR` (default `./mahakam-pdfs`); `id`/`ids[]` validated against `^[a-z0-9]+$` before URL/filename use (trust boundary); `mkdir` recursive before write; invoice/quotation files overwrite on regeneration (id = one document); recap filename MUST distinguish id sets (hash of sorted `ids`) so distinct recaps never share a path; tool returns absolute path. (T73)
-- V53: MCP PDF tools write the file only on HTTP 200 with `Content-Type: application/pdf`; any other response returns `{ error: true, message, statusCode }` and leaves no file behind — failed fetches never masquerade as PDFs at the promised path. (T73)
+- V49: MCP server authenticates Mahakam API via Bearer API key only (`mk_live_…`). `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` env vars; no JWT auth. On 403 response, MCP tool must return `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }` — never raw HTTP body. (T71-T73)
+- V50: MCP server never mutates — no PUT/DELETE tools; POST allowed only for document-generating endpoints (recap PDF). Data-write tools added later with explicit user confirmation flow. (T71-T73,T74)
+- V51: MCP server auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore` so LLM knows to paginate. (T71-T73)
+- V52: MCP PDF downloads write to `MAHAKAM_PDF_DIR` (default `./mahakam-pdfs`); `id`/`ids[]` validated against `^[a-z0-9]+$` before URL/filename use (trust boundary); `mkdir` recursive before write; invoice/quotation files overwrite on regeneration (id = one document); recap filename MUST distinguish id sets (hash of sorted `ids`) so distinct recaps never share a path; tool returns absolute path. (T74)
+- V53: MCP PDF tools write the file only on HTTP 200 with `Content-Type: application/pdf`; any other response returns `{ error: true, message, statusCode }` and leaves no file behind — failed fetches never masquerade as PDFs at the promised path. (T74)
+- V54: MCP `download_invoice_pdf` accepts internal id OR exact invoice number (e.g. `020/INVOICE/OSB/VIII/2026`). Input matching `^[a-z0-9]+$` goes direct; anything else resolves via `GET /api/invoices?invoiceNumber=<exact>&limit=1` — non-id input NEVER touches the URL path or filename, and the resolved id is re-checked against `^[a-z0-9]+$` before use. The list response MUST echo the requested number (exact match on the returned item) — a backend without the filter must fail closed, never resolve to an unrelated invoice. No match → `{ error: true, message: "Nomor faktur tidak ditemukan", statusCode: 404 }`. (T75)
+
 
 ## §T — tasks
 
@@ -196,6 +198,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 | T72 | x | MCP tools: `get_dashboard`, `list_invoices`, `get_invoice`, `list_expenses`, `get_expense`, `list_ledgers`, `get_profit_loss`, `get_balance_sheet`, `get_cash_flow` — each wraps Mahakam REST endpoint with Bearer auth, auto-paginate list tools (limit=50, totalCount+hasMore), structured 403 error response | V49,V50,V51 |
 | T73 | x | OpenCode MCP config: add `mcpServers.mahakam` entry to `opencode.json` with `command: "npx"`, `args: ["tsx", "mcp/src/index.ts"]`, env vars `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` | V49 |
 | T74 | x | MCP PDF tools: `download_invoice_pdf`, `download_quotation_pdf`, `download_recap_pdf` — fetch PDF bytes, save `MAHAKAM_PDF_DIR`, return absolute path; id validation + mkdir recursive; recap filename = id-set hash; write only on 200 + `application/pdf`; V50 amended (recap POST generate-only) | V50,V52,V53 |
+| T75 | x | Invoice PDF by number: backend `GET /api/invoices` gains exact `invoiceNumber` filter; MCP `download_invoice_pdf` accepts id OR invoice number (resolve→id→PDF, structured 404 when unknown, response echo re-check) | V54,B41 |
 
 ## §B — bugs
 
@@ -241,3 +244,5 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 | B38 | 2026-08-28 | Numbering regex had no capture group around `\d+` in sequence pattern; `m[1]` was always undefined → `parseInt(undefined, 10) \|\| 0` = 0 → sequence always 1 regardless of existing invoices | Wrapped `seqPattern` in capture group parentheses: `^(\d+).*dateAnchor.*$` (V43) |
 | B39 | 2026-08-31 | Rekap wizard/invoice list had inconsistent status filter — wizard offered combined "Terkirim & Sebagian" (`sent_partial`) option not present in main invoice table filter | Removed `sent_partial` option from both wizard and manual rekap modals; default status filter is now "Terkirim" (`sent`) (V45) |
 | B40 | 2026-09-03 | Staff with only `pengeluaran` scope hit error screen on "Tambah Pengeluaran" — Expenses form loaded its Akun Beban dropdown from `GET /api/ledgers/` which 403s without `buku-besar`; the unguarded fetch stored the 403 error object into state and `ledgers.filter` crashed the render | New `GET /api/expenses/ledgers` scoped `pengeluaran` serves the form's account list; Expenses fetch guards `r.ok` + `Array.isArray` so any API failure degrades to an empty dropdown (T67,V47) |
+| B41 | 2026-09-30 | MCP `download_invoice_pdf` rejected invoice numbers (e.g. `020/INVOICE/OSB/VIII/2026`) — tool accepted only internal cuid ids gated by `^[a-z0-9]+$`, but the invoice number is the handle users/agents actually have; backend list had no number filter either | Exact `invoiceNumber` filter on `GET /api/invoices`; MCP resolves number→id before fetching PDF (T74,V54) |
+

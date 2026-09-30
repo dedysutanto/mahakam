@@ -13,16 +13,17 @@ export async function invoiceRoutes(app: FastifyInstance) {
       summary: 'List invoices',
       description: 'List all invoices for the authenticated tenant. Supports pagination and filtering by status, customer, date range.',
       security: [{ BearerAuth: [] }],
-      querystring: { type: 'object', properties: { page: { type: 'string' }, limit: { type: 'string' }, status: { type: 'string' }, customerId: { type: 'string' }, dateFrom: { type: 'string' }, dateTo: { type: 'string' } } },
+      querystring: { type: 'object', properties: { page: { type: 'string' }, limit: { type: 'string' }, status: { type: 'string' }, customerId: { type: 'string' }, invoiceNumber: { type: 'string' }, dateFrom: { type: 'string' }, dateTo: { type: 'string' } } },
     },
     preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
   }, async (request: any) => {
     const { tenantId } = request.user as any
-    const { page = '1', limit = '20', status, customerId, dateFrom, dateTo } = request.query as any
+    const { page = '1', limit = '20', status, customerId, invoiceNumber, dateFrom, dateTo } = request.query as any
 
     const where: any = { tenantId }
     if (status) where.status = status
     if (customerId) where.customerId = customerId
+    if (invoiceNumber) where.invoiceNumber = invoiceNumber
     if (dateFrom) where.issueDate = { ...where.issueDate, gte: new Date(dateFrom as string) }
     if (dateTo) where.issueDate = { ...where.issueDate, lte: new Date(dateTo as string) }
 

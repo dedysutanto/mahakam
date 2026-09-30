@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { mahakamFetch, mahakamFetchPaginated, mahakamFetchPdf } from "./client.js"
-import { ID_MSG, ID_RE, recapHash, savePdf } from "./pdf.js"
+import { ID_MSG, ID_RE, recapHash, resolveInvoiceId, savePdf } from "./pdf.js"
 
 const server = new McpServer({
   name: "mahakam",
@@ -141,11 +141,12 @@ const text = (payload: unknown) => ({
 
 server.tool(
   "download_invoice_pdf",
-  "Download invoice PDF to disk; returns absolute file path",
-  { id: z.string().describe("Invoice ID") },
+  "Download invoice PDF to disk; accepts invoice ID or invoice number (e.g. 020/INVOICE/OSB/VIII/2026); returns absolute file path",
+  { id: z.string().min(1).max(100).describe("Invoice ID or invoice number") },
   async ({ id }) => {
-    if (!ID_RE.test(id)) return text({ error: true, message: ID_MSG, statusCode: 400 })
-    return text(await savePdf(`faktur-${id}.pdf`, await mahakamFetchPdf(`/invoices/${id}/pdf`, "faktur")))
+    const resolved = await resolveInvoiceId(id)
+    if ("error" in resolved) return text(resolved)
+    return text(await savePdf(`faktur-${resolved.id}.pdf`, await mahakamFetchPdf(`/invoices/${resolved.id}/pdf`, "faktur")))
   }
 )
 
