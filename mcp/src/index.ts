@@ -7,7 +7,7 @@ import { ID_MSG, ID_RE, recapHash, resolveInvoiceId, resolveInvoiceIds, savePdf 
 
 const server = new McpServer({
   name: "mahakam",
-  version: "1.1.0",
+  version: "1.2.0",
 })
 
 // --- healthcheck ---
@@ -174,6 +174,68 @@ server.tool(
     if ("error" in resolved) return text(resolved)
     const fetched = await mahakamFetchPdf("/invoices/recap", "faktur", "POST", { ids: resolved.ids })
     return text(await savePdf(`rekap-penagihan-${recapHash(resolved.ids)}.pdf`, fetched))
+  }
+)
+
+// --- Write (V50/V56: draft create only; number + totals are server-owned) ---
+const SERVER_OWNED = ["invoiceNumber", "status", "subtotal", "taxAmount", "total"] as const
+
+server.tool(
+  "create_invoice_draft",
+  "Create a DRAFT invoice (never issued) from a customer and line items. The invoice number is generated server-side and totals are computed server-side; passing invoiceNumber/status/total is rejected. Returns the created row plus the saved PDF path. A human reviews the draft in the web UI before issuing it.",
+  {
+    customerId: z.string().min(1).describe("Existing customer ID"),
+    dueDate: z.string().min(1).describe("Due date (YYYY-MM-DD)"),
+    items: z
+      .array(
+        z.object({
+          description: z.string().min(1),
+          quantity: z.number(),
+          unitPrice: z.number(),
+          productId: z.string().optional(),
+          unit: z.string().optional(),
+          discount: z.number().optional().describe("Discount percent 0-100"),
+        })
+      )
+      .min(1)
+      .describe("Invoice line items"),
+    issueDate: z.string().optional().describe("Issue date (YYYY-MM-DD); server default when omitted"),
+    notes: z.string().optional(),
+    terms: z.string().optional(),
+    taxId: z.string().optional(),
+    taxRate: z.number().optional(),
+    // Declared so a caller supplying them hits the V56 rejection instead of a silent strip.
+    invoiceNumber: z.string().optional(),
+    status: z.string().optional(),
+    subtotal: z.number().optional(),
+    taxAmount: z.number().optional(),
+    total: z.number().optional(),
+  },
+  async (args) => {
+    const injected = SERVER_OWNED.filter((k) => (args as Record<string, unknown>)[k] !== undefined)
+    if (injected.length > 0) {
+      return text({
+        error: true,
+        message: `create_invoice_draft does not accept ${injected.join(", ")} — the number is generated server-side, the invoice is always created as a draft, and totals are computed from the items.`,
+        statusCode: 400,
+      })
+    }
+
+    const { customerId, dueDate, items, issueDate, notes, terms, taxId, taxRate } = args
+    // V56: this body is the whole write surface — no server-owned field ever leaves here.
+    const body = { customerId, dueDate, items, issueDate, notes, terms, taxId, taxRate }
+    const created = await mahakamFetch<{ id: string }>("/invoices", "faktur", undefined, {
+      method: "POST",
+      body,
+    })
+    if ("error" in created) return text(created)
+
+    const fetched = await mahakamFetchPdf(`/invoices/${created.id}/pdf`, "faktur")
+    const pdf = await savePdf(`faktur-${created.id}.pdf`, fetched)
+    if ("error" in pdf) return text(pdf)
+
+    const { error, ...row } = created as Record<string, unknown> & { id: string }
+    return text({ ...row, path: pdf.path, filename: pdf.filename })
   }
 )
 

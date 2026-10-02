@@ -2,7 +2,7 @@
 
 ## §G — goal
 
-Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company. Standalone MCP server for LLM tool access (read-only query of invoices, expenses, ledger, reports, dashboard) + PDF download (invoice, quotation, recap).
+Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first React SPA frontend, Fastify 5 backend, PostgreSQL, Docker Swarm deploy. Data isolated per company. Standalone MCP server for LLM tool access: read-only query (invoices, expenses, ledger, reports, dashboard) + PDF download (invoice, quotation, recap) + one write tool, `create_invoice_draft` (draft invoice creation only).
 
 - Sub-goal: baris item faktur (web detail + PDF) — kolom "Item" tetap menampilkan nilai baris (nama item, tidak tertimpa); kolom "Deskripsi" baru khusus menampilkan deskripsi produk bila ada.
 
@@ -20,6 +20,7 @@ Multi-tenant accounting & invoice SaaS, Bahasa Indonesia primary, mobile-first R
 - Deploy: Docker (standalone compose + swarm stack), postgres:16-alpine, nginx for frontend.
 - Out of scope: complex tax engine (basic rates only), AP three-way matching/approvals/SLA, blockchain/crypto.
 - Invoice line rendering: TWO columns — "Item" keeps the line description (item value, never overwritten); dedicated "Deskripsi" column shows live `product.description` when non-empty, `-` when absent (manual items always `-`). Web detail (`Invoices.tsx`; both mappers carry flat `productDescription`) + PDF (`pdf.ts`: new `colItem` 108pt + `colProd` 132pt split the old 246pt slot; module `colDesc` 246pt stays for the quotation table so quotation layout is untouched; row height = max(item text, product text)). Live join from Prisma `item.product` — no schema change/migration; backend GET/PDF already `include items.product`, no API change. Scope: invoices only — quotations out of scope.
+- MCP write scope: only `create_invoice_draft` (draft-only, server-assigned number) plus the recap PDF POST. Out of scope: invoice update/delete/status transition, payments, customer/product/quotation creation, quotation→invoice conversion, `invoiceNumber`/`status`/total overrides, any other write tool (each needs its own explicit decision).
 
 ## §I — interfaces
 
@@ -48,7 +49,7 @@ Docker services: `api` (Fastify :3000), `frontend` (nginx :80), `db` (postgres:1
 
 MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 - Auth: env vars `MAHAKAM_BASE_URL`, `MAHAKAM_API_KEY` (Bearer `mk_live_…` forwarded to REST API); download dir env `MAHAKAM_PDF_DIR`, default `./mahakam-pdfs`.
-- Read-only: no PUT/DELETE tools; POST only for document-generating endpoints (recap PDF), never data mutation.
+- Write surface: no PUT/DELETE tools; POST allowed only for document-generating endpoints (recap PDF) and `create_invoice_draft` — draft-only invoice creation with server-generated number and server-computed totals (V56).
 - Tools:
   - `get_dashboard(period?)` → dashboard overview stats (no scope — open to all members)
   - `list_invoices(status?, customerId?, dateFrom?, dateTo?, page?)` → paginated invoice list (scope `faktur`)
@@ -62,6 +63,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
   - `download_invoice_pdf(id | invoiceNumber)` → fetch invoice PDF (number resolves via exact `invoiceNumber` list filter), save to disk, return absolute path (scope `faktur`)
   - `download_quotation_pdf(id)` → fetch quotation PDF, save to disk, return absolute path (scope `penawaran`)
   - `download_recap_pdf(ids[])` → fetch recap PDF (POST generate-only), save to disk, return absolute path (scope `faktur`)
+  - `create_invoice_draft(customerId, dueDate, items[], issueDate?, notes?, terms?, taxId?, taxRate?)` → create draft invoice (server-generated number, server-computed totals), save PDF, return `{id, invoiceNumber, status, subtotal, taxAmount, total, path, filename}` (scope `faktur`)
 - Auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore`.
 - 403 error response: `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }`.
 
@@ -113,12 +115,13 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 - V47: Expense form account dropdown data comes from `GET /api/expenses/ledgers` (scope `pengeluaran`), never `GET /api/ledgers` (`buku-besar`); the Expenses page guards every list response with `Array.isArray` before storing to state. A form's datalist endpoints must be reachable under the form's own write scope — `buku-besar` read scope is never required to create a `pengeluaran`-scoped expense (B40).
 - V48: Dashboard/Laba Rugi revenue is accrual — a payment's journal entry is dated with the **invoice's `issueDate`** (not the payment day), so revenue lands in the invoice month regardless of when cash arrives. Backfill migration re-dates existing payment JEs to `issueDate`; new payments record `date: invoice.issueDate` at posting. (T69)
 - V49: MCP server authenticates Mahakam API via Bearer API key only (`mk_live_…`). `MAHAKAM_BASE_URL` + `MAHAKAM_API_KEY` env vars; no JWT auth. On 403 response, MCP tool must return `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }` — never raw HTTP body. (T71-T73)
-- V50: MCP server never mutates — no PUT/DELETE tools; POST allowed only for document-generating endpoints (recap PDF). Data-write tools added later with explicit user confirmation flow. (T71-T73,T74)
+- V50: MCP write surface — no PUT/DELETE tools; POST allowed only for document-generating endpoints (recap PDF) and `create_invoice_draft`, which is draft-only with a server-generated number (V56). Every other future write tool requires its own explicit decision, never inherited. (T71-T73,T74,T77)
 - V51: MCP server auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore` so LLM knows to paginate. (T71-T73)
 - V52: MCP PDF downloads write to `MAHAKAM_PDF_DIR` (default `./mahakam-pdfs`); `id`/`ids[]` validated against `^[a-z0-9]+$` before URL/filename use (trust boundary); `mkdir` recursive before write; invoice/quotation files overwrite on regeneration (id = one document); recap filename MUST distinguish id sets (hash of sorted `ids`) so distinct recaps never share a path; tool returns absolute path. (T74)
 - V53: MCP PDF tools write the file only on HTTP 200 with `Content-Type: application/pdf`; any other response returns `{ error: true, message, statusCode }` and leaves no file behind — failed fetches never masquerade as PDFs at the promised path. (T74)
 - V54: MCP `download_invoice_pdf` accepts internal id OR exact invoice number (e.g. `020/INVOICE/OSB/VIII/2026`). Input matching `^[a-z0-9]+$` goes direct; anything else resolves via `GET /api/invoices?invoiceNumber=<exact>&limit=1` — non-id input NEVER touches the URL path or filename, and the resolved id is re-checked against `^[a-z0-9]+$` before use. The list response MUST echo the requested number (exact match on the returned item) — a backend without the filter must fail closed, never resolve to an unrelated invoice. No match → `{ error: true, message: "Nomor faktur tidak ditemukan", statusCode: 404 }`. (T75)
 - V55: Every MCP tool taking an invoice reference accepts the same handles — internal id or exact invoice number. `download_recap_pdf` resolves each `ids[]` entry through the V54 resolution (numbers never reach the URL path or filename) before the POST; the resolved id set is what the recap POST and filename hash receive. Resolution is all-or-nothing: any unresolvable number aborts the whole recap with the V54 error, never a partial document. (T76)
+- V56: MCP `create_invoice_draft` creates a draft invoice and nothing else. `status`, `invoiceNumber`, `subtotal`, `taxAmount`, `total` are NEVER accepted as arguments — the endpoint already forces `status: 'draft'` and `generateDocNumber` owns the per-tenant sequence, while totals are recomputed server-side from `items`; passing any of them → loud structured 400, never silently dropped. `customerId` must reference an existing tenant customer (no inline customer creation). The call returns the created row `{ id, invoiceNumber, status, subtotal, taxAmount, total }` plus the saved PDF path (through `savePdf`, so V52/V53 gates apply). Scope `faktur` with the V49 403 shape. Duplicate-on-retry is accepted: an agent retry leaves one extra draft consuming one number, discarded through the existing web delete; no idempotency key (out of scope, revisit only if it bites). (T77)
 
 
 ## §T — tasks
@@ -201,6 +204,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 | T74 | x | MCP PDF tools: `download_invoice_pdf`, `download_quotation_pdf`, `download_recap_pdf` — fetch PDF bytes, save `MAHAKAM_PDF_DIR`, return absolute path; id validation + mkdir recursive; recap filename = id-set hash; write only on 200 + `application/pdf`; V50 amended (recap POST generate-only) | V50,V52,V53 |
 | T75 | x | Invoice PDF by number: backend `GET /api/invoices` gains exact `invoiceNumber` filter; MCP `download_invoice_pdf` accepts id OR invoice number (resolve→id→PDF, structured 404 when unknown, response echo re-check) | V54,B41 |
 | T76 | x | MCP `download_recap_pdf` accepts invoice numbers as well as ids: shared V54 resolution applied per `ids[]` entry (all-or-nothing, structured 404 on unknown number), resolved ids feed the recap POST + filename hash; tool description + selfcheck cover mixed id/number sets | V55,B42 |
+| T77 | x | MCP `create_invoice_draft`: create draft invoice from `customerId` + `items[]` via unchanged `POST /api/invoices`; never accepts `status`/`invoiceNumber`/totals (loud 400), number owned by `generateDocNumber`, totals server-computed; returns row + saved PDF path (`savePdf`, V52/V53); scope `faktur`; selfcheck covers rejection of injected number/status/total and PDF magic | V50,V52,V53,V56 |
 
 ## §B — bugs
 

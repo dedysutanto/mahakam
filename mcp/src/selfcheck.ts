@@ -8,8 +8,29 @@ import path from "node:path"
 
 const PDF = Buffer.from("%PDF-1.4 mock")
 
+const created: { body?: any; count: number } = { count: 0 }
+
 const server = createServer((req, res) => {
-  if (req.url === "/api/invoices/good123/pdf") {
+  if (req.url === "/api/invoices" && req.method === "POST") {
+    const chunks: Buffer[] = []
+    req.on("data", (c) => chunks.push(c))
+    req.on("end", () => {
+      created.count++
+      created.body = JSON.parse(Buffer.concat(chunks).toString())
+      res.writeHead(201, { "content-type": "application/json" }).end(
+        JSON.stringify({
+          id: "newinv1",
+          invoiceNumber: "001/INV/OSB/X/2026",
+          status: "draft",
+          subtotal: 100000,
+          taxAmount: 11000,
+          total: 111000,
+        })
+      )
+    })
+  } else if (req.url === "/api/invoices/newinv1/pdf") {
+    res.writeHead(200, { "content-type": "application/pdf" }).end(PDF)
+  } else if (req.url === "/api/invoices/good123/pdf") {
     res.writeHead(200, { "content-type": "application/pdf" }).end(PDF)
   } else if (req.url === "/api/invoices/miss999/pdf") {
     res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ message: "Faktur tidak ditemukan" }))
@@ -33,6 +54,25 @@ const server = createServer((req, res) => {
     res.writeHead(404).end()
   }
 })
+
+// The tool lives inside index.ts on a connected MCP server; call it through a real
+// MCP client over stdio so the assertion covers the schema gate, not a re-implementation.
+const toolCall = async (name: string, args: unknown) => {
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js")
+  const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js")
+  const transport = new StdioClientTransport({
+    command: path.join(path.dirname(new URL(import.meta.url).pathname), "../node_modules/.bin/tsx"),
+    args: [new URL("./index.ts", import.meta.url).pathname],
+    cwd: path.dirname(new URL(import.meta.url).pathname),
+    env: { ...process.env } as Record<string, string>,
+    stderr: "inherit",
+  })
+  const client = new Client({ name: "selfcheck", version: "0" })
+  await client.connect(transport)
+  const result = await client.callTool({ name, arguments: args as Record<string, unknown> })
+  await client.close()
+  return JSON.parse((result.content as { type: string; text: string }[])[0].text)
+}
 
 async function main() {
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r))
@@ -112,6 +152,38 @@ async function main() {
     `rekap-penagihan-${recapHash(batch.ids)}.pdf`,
     await mahakamFetchPdf("/invoices/recap", "faktur", "POST", { ids: batch.ids })
   )
+
+  // T77 / V56: draft create — server-owned fields rejected loudly, nothing posted
+  const before = created.count
+  for (const bad of [{ invoiceNumber: "999/X" }, { status: "sent" }, { total: 1 }, { subtotal: 1 }, { taxAmount: 1 }]) {
+    const res = await toolCall("create_invoice_draft", {
+      customerId: "cust1",
+      dueDate: "2026-10-31",
+      items: [{ description: "Jasa", quantity: 1, unitPrice: 100000 }],
+      ...bad,
+    })
+    assert(
+      res.error === true && res.statusCode === 400 && res.message.includes(Object.keys(bad)[0]),
+      `V56: ${Object.keys(bad)[0]} rejected with 400`
+    )
+  }
+  assert(created.count === before, "V56: rejected call must not reach the API")
+
+  // T77 / V56: happy path — body carries no server-owned field, response exposes server totals + PDF path
+  const made = await toolCall("create_invoice_draft", {
+    customerId: "cust1",
+    dueDate: "2026-10-31",
+    items: [{ description: "Jasa", quantity: 1, unitPrice: 100000 }],
+  })
+  assert(made.id === "newinv1" && made.status === "draft", "V56: created row returned")
+  assert(made.invoiceNumber === "001/INV/OSB/X/2026", "V56: number comes from the server")
+  assert(made.subtotal === 100000 && made.taxAmount === 11000 && made.total === 111000, "V56: server-computed totals")
+  assert(
+    !("invoiceNumber" in created.body) && !("status" in created.body) && !("total" in created.body),
+    "V56: request body carries no server-owned field"
+  )
+  assert(created.body.customerId === "cust1" && created.body.items.length === 1, "V56: only caller fields posted")
+  assert(path.isAbsolute(made.path) && readFileSync(made.path).subarray(0, 5).toString() === "%PDF-", "T77: draft PDF saved")
 
   rmSync(dir, { recursive: true, force: true })
   server.close()
