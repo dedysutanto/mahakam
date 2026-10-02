@@ -20,8 +20,8 @@ export async function mahakamFetch<T>(
   path: string,
   scope: string,
   params?: Record<string, string | undefined>,
-  // V56/V58: only the two draft-write tools send a body; every other caller stays a plain GET.
-  write?: { method: "POST" | "PUT"; body: unknown }
+  // V56/V58/V61: only the draft-write tools send a body — DELETE carries none; every other caller stays a plain GET.
+  write?: { method: "POST" | "PUT" | "DELETE"; body?: unknown }
 ): Promise<T | MahakamError> {
   const url = new URL(`/api${path}`, config.baseUrl)
   if (params) {
@@ -31,10 +31,12 @@ export async function mahakamFetch<T>(
   }
 
   const res = await fetch(url.toString(), {
-    ...(write ? { method: write.method, body: JSON.stringify(write.body) } : {}),
+    ...(write ? { method: write.method, ...(write.body !== undefined ? { body: JSON.stringify(write.body) } : {}) } : {}),
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
+      // A bodyless request must not advertise a JSON body — Fastify rejects POST/PUT/DELETE with
+      // `Content-Type: application/json` and an empty body (400 "Body cannot be empty").
+      ...(write?.body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
   })
 
@@ -54,7 +56,9 @@ export async function mahakamFetch<T>(
     }
   }
 
-  return (await res.json()) as T
+  // V61: DELETE /api/invoices/:id answers { message } — callers that need nothing back read the row first.
+  const text = await res.text()
+  return (text ? JSON.parse(text) : {}) as T
 }
 
 export async function mahakamFetchPaginated<T>(

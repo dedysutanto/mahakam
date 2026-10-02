@@ -308,6 +308,33 @@ server.tool(
   }
 )
 
+// V61: the companion delete for the draft lifecycle. Draft-only is enforced HERE, not by the
+// backend — an API key authenticates as role `admin`, so `DELETE /api/invoices/:id` would happily
+// remove a sent or paid invoice. Read status first, refuse loudly, and never send the DELETE.
+server.tool(
+  "delete_invoice_draft",
+  "Delete a DRAFT invoice (only drafts can be deleted; a sent, partial, overdue or paid invoice is rejected and nothing is sent). Accepts the internal ID or the exact invoice number. Returns { id, invoiceNumber, deleted: true }. The delete is permanent.",
+  { invoiceRef: z.string().min(1).max(100).describe("Draft invoice ID or exact invoice number (e.g. 020/INVOICE/OSB/VIII/2026); a sent/paid invoice is rejected") },
+  async ({ invoiceRef }) => {
+    const resolved = await resolveInvoiceId(invoiceRef)
+    if ("error" in resolved) return text(resolved)
+
+    const current = await mahakamFetch<{ invoiceNumber: string; status: string }>(`/invoices/${resolved.id}`, "faktur")
+    if ("error" in current) return text(current)
+    if (current.status !== "draft") {
+      return text({
+        error: true,
+        message: `Faktur ${current.invoiceNumber} berstatus ${current.status} — hanya draft yang dapat dihapus.`,
+        statusCode: 422,
+      })
+    }
+
+    const removed = await mahakamFetch<{ message: string }>(`/invoices/${resolved.id}`, "faktur", undefined, { method: "DELETE" })
+    if ("error" in removed) return text(removed)
+    return text({ id: resolved.id, invoiceNumber: current.invoiceNumber, deleted: true })
+  }
+)
+
 // --- Start ---
 async function main() {
   const transport = new StdioServerTransport()

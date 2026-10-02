@@ -10,6 +10,7 @@ const PDF = Buffer.from("%PDF-1.4 mock")
 
 const created: { body?: any; count: number } = { count: 0 }
 const put: { body?: any; count: number } = { count: 0 }
+const deleted: { count: number } = { count: 0 }
 
 const server = createServer((req, res) => {
   if (req.url === "/api/invoices" && req.method === "POST") {
@@ -47,6 +48,19 @@ const server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/json" }).end(
       JSON.stringify({ id: "sent222", invoiceNumber: "010/INV/OSB/X/2026", status: "sent" })
     )
+  } else if (req.url === "/api/invoices/newinv1" && req.method === "GET") {
+    // V61: the row exists as a draft until the DELETE lands, then it is gone.
+    if (deleted.count > 0) {
+      // deployed API throws on a missing row, so the status is 500 (not 404) — mirrored here on purpose
+      res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ message: "Faktur tidak ditemukan" }))
+    } else {
+      res.writeHead(200, { "content-type": "application/json" }).end(
+        JSON.stringify({ id: "newinv1", invoiceNumber: "001/INV/OSB/X/2026", status: "draft" })
+      )
+    }
+  } else if (req.url === "/api/invoices/newinv1" && req.method === "DELETE") {
+    deleted.count++
+    res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ message: "Faktur berhasil dihapus" }))
   } else if (req.url === "/api/invoices/upd111" && req.method === "PUT") {
     const chunks: Buffer[] = []
     req.on("data", (c) => chunks.push(c))
@@ -71,6 +85,7 @@ const server = createServer((req, res) => {
     const byNumber: Record<string, string> = {
       "020/INVOICE/OSB/VIII/2026": "good123",
       "021/INVOICE/OSB/VIII/2026": "good456",
+      "001/INV/OSB/X/2026": "newinv1",
     }
     const data: { id: string; invoiceNumber: string }[] = []
     if (byNumber[num ?? ""]) data.push({ id: byNumber[num!], invoiceNumber: num! })
@@ -252,6 +267,27 @@ async function main() {
     items: [{ description: "Jasa", quantity: 1, unitPrice: 1 }],
   })
   assert(sent.error === true && sent.statusCode === 422 && put.count === 1, "V58: non-draft rejected locally")
+
+  // V61: create → delete (by server-assigned number) → the row is gone
+  const made2 = await toolCall("create_invoice_draft", {
+    customerId: "cust1", dueDate: "2026-10-31", items: [{ description: "Jasa", quantity: 1, unitPrice: 1 }],
+  })
+  assert(made2.id === "newinv1" && made2.invoiceNumber === "001/INV/OSB/X/2026", "V61: draft created for delete")
+  const goneBefore = await toolCall("get_invoice", { id: "newinv1" })
+  assert(goneBefore.id === "newinv1", "V61: draft reachable before delete")
+  const removed = await toolCall("delete_invoice_draft", { invoiceRef: "001/INV/OSB/X/2026" })
+  assert(removed.deleted === true && removed.id === "newinv1", "V61: number resolved and row reported deleted")
+  assert(removed.invoiceNumber === "001/INV/OSB/X/2026", "V61: response echoes the number")
+  assert(deleted.count === 1, "V61: exactly one DELETE sent")
+  const goneAfter = await toolCall("get_invoice", { id: "newinv1" })
+  assert(goneAfter.error === true && goneAfter.statusCode === 500, "V61: row gone after delete")
+
+  // V61: a non-draft is rejected locally — zero DELETE reaches the API
+  const sentDel = await toolCall("delete_invoice_draft", { invoiceRef: "sent222" })
+  assert(
+    sentDel.error === true && sentDel.statusCode === 422 && deleted.count === 1,
+    "V61: non-draft rejected locally, no DELETE sent"
+  )
 
   rmSync(dir, { recursive: true, force: true })
   server.close()
