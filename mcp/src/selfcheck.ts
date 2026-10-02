@@ -50,6 +50,15 @@ const server = createServer((req, res) => {
     res
       .writeHead(200, { "content-type": "application/json" })
       .end(JSON.stringify({ data, pagination: { page: 1, limit: 1, total: data.length, totalPages: 1 } }))
+  } else if (req.url?.startsWith("/api/customers?")) {
+    const q = new URL(req.url, "http://localhost").searchParams
+    assert(q.get("search") === "KMJ", "T78: search filter forwarded verbatim")
+    res.writeHead(200, { "content-type": "application/json" }).end(
+      JSON.stringify({
+        data: [{ id: "cust1", name: "PT KMJ", type: "customer" }],
+        pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+      })
+    )
   } else {
     res.writeHead(404).end()
   }
@@ -184,6 +193,10 @@ async function main() {
   )
   assert(created.body.customerId === "cust1" && created.body.items.length === 1, "V56: only caller fields posted")
   assert(path.isAbsolute(made.path) && readFileSync(made.path).subarray(0, 5).toString() === "%PDF-", "T77: draft PDF saved")
+
+  // T78 / V57: customer lookup is reachable under the write call's scope and forwards filters
+  const customers = await toolCall("list_customers", { search: "KMJ" })
+  assert(customers.items[0].id === "cust1" && customers.totalCount === 1, "T78: customer list returned")
 
   rmSync(dir, { recursive: true, force: true })
   server.close()

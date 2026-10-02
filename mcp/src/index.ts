@@ -7,7 +7,7 @@ import { ID_MSG, ID_RE, recapHash, resolveInvoiceId, resolveInvoiceIds, savePdf 
 
 const server = new McpServer({
   name: "mahakam",
-  version: "1.2.0",
+  version: "1.3.0",
 })
 
 // --- healthcheck ---
@@ -174,6 +174,21 @@ server.tool(
     if ("error" in resolved) return text(resolved)
     const fetched = await mahakamFetchPdf("/invoices/recap", "faktur", "POST", { ids: resolved.ids })
     return text(await savePdf(`rekap-penagihan-${recapHash(resolved.ids)}.pdf`, fetched))
+  }
+)
+
+// --- Customers (V57: auth-only endpoint — resolves the customerId a write needs) ---
+server.tool(
+  "list_customers",
+  "List customers/vendors to find the customer ID an invoice needs. Supports name/email search.",
+  {
+    search: z.string().optional().describe("Search by name or email"),
+    type: z.string().optional().describe("Filter by type: customer, vendor"),
+    page: z.string().optional().describe("Page number (default 1)"),
+  },
+  async ({ search, type, page }) => {
+    const result = await mahakamFetchPaginated("/customers", "", { search, type, page })
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
   }
 )
 

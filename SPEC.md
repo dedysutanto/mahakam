@@ -64,6 +64,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
   - `download_quotation_pdf(id)` → fetch quotation PDF, save to disk, return absolute path (scope `penawaran`)
   - `download_recap_pdf(ids[])` → fetch recap PDF (POST generate-only), save to disk, return absolute path (scope `faktur`)
   - `create_invoice_draft(customerId, dueDate, items[], issueDate?, notes?, terms?, taxId?, taxRate?)` → create draft invoice (server-generated number, server-computed totals), save PDF, return `{id, invoiceNumber, status, subtotal, taxAmount, total, path, filename}` (scope `faktur`)
+  - `list_customers(search?, type?, page?)` → paginated customer/vendor list, to resolve the `customerId` a write needs (no scope — open to all members, V57)
 - Auto-paginate: default `limit=50`, response includes `totalCount` + `hasMore`.
 - 403 error response: `{ error: true, message: "Scope '<scope>' required but not granted on this API key. Add scope in Settings → API Keys." }`.
 
@@ -122,6 +123,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 - V54: MCP `download_invoice_pdf` accepts internal id OR exact invoice number (e.g. `020/INVOICE/OSB/VIII/2026`). Input matching `^[a-z0-9]+$` goes direct; anything else resolves via `GET /api/invoices?invoiceNumber=<exact>&limit=1` — non-id input NEVER touches the URL path or filename, and the resolved id is re-checked against `^[a-z0-9]+$` before use. The list response MUST echo the requested number (exact match on the returned item) — a backend without the filter must fail closed, never resolve to an unrelated invoice. No match → `{ error: true, message: "Nomor faktur tidak ditemukan", statusCode: 404 }`. (T75)
 - V55: Every MCP tool taking an invoice reference accepts the same handles — internal id or exact invoice number. `download_recap_pdf` resolves each `ids[]` entry through the V54 resolution (numbers never reach the URL path or filename) before the POST; the resolved id set is what the recap POST and filename hash receive. Resolution is all-or-nothing: any unresolvable number aborts the whole recap with the V54 error, never a partial document. (T76)
 - V56: MCP `create_invoice_draft` creates a draft invoice and nothing else. `status`, `invoiceNumber`, `subtotal`, `taxAmount`, `total` are NEVER accepted as arguments — the endpoint already forces `status: 'draft'` and `generateDocNumber` owns the per-tenant sequence, while totals are recomputed server-side from `items`; passing any of them → loud structured 400, never silently dropped. `customerId` must reference an existing tenant customer (no inline customer creation). The call returns the created row `{ id, invoiceNumber, status, subtotal, taxAmount, total }` plus the saved PDF path (through `savePdf`, so V52/V53 gates apply). Scope `faktur` with the V49 403 shape. Duplicate-on-retry is accepted: an agent retry leaves one extra draft consuming one number, discarded through the existing web delete; no idempotency key (out of scope, revisit only if it bites). (T77)
+- V57: MCP read tools that feed a write call are reachable under the write call's own scope — `list_customers(search?, type?, page?)` wraps the open `GET /api/customers` (auth-only, no scope) so an agent holding only `faktur` can resolve the `customerId` that `create_invoice_draft` requires; it never demands `pelanggan` (V47/B40 class). Read-only: no customer create/update/delete tool. (T78)
 
 
 ## §T — tasks
@@ -205,6 +207,7 @@ MCP server (`mcp/`, stdio, `@modelcontextprotocol/sdk`):
 | T75 | x | Invoice PDF by number: backend `GET /api/invoices` gains exact `invoiceNumber` filter; MCP `download_invoice_pdf` accepts id OR invoice number (resolve→id→PDF, structured 404 when unknown, response echo re-check) | V54,B41 |
 | T76 | x | MCP `download_recap_pdf` accepts invoice numbers as well as ids: shared V54 resolution applied per `ids[]` entry (all-or-nothing, structured 404 on unknown number), resolved ids feed the recap POST + filename hash; tool description + selfcheck cover mixed id/number sets | V55,B42 |
 | T77 | x | MCP `create_invoice_draft`: create draft invoice from `customerId` + `items[]` via unchanged `POST /api/invoices`; never accepts `status`/`invoiceNumber`/totals (loud 400), number owned by `generateDocNumber`, totals server-computed; returns row + saved PDF path (`savePdf`, V52/V53); scope `faktur`; selfcheck covers rejection of injected number/status/total and PDF magic | V50,V52,V53,V56 |
+| T78 | x | MCP `list_customers(search?, type?, page?)`: paginated wrapper over the auth-only `GET /api/customers` (exact `search`/`type` filters) so `create_invoice_draft` is usable without the `pelanggan` scope; no customer write tools | V57 |
 
 ## §B — bugs
 
