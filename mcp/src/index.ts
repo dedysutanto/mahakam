@@ -7,7 +7,7 @@ import { ID_MSG, ID_RE, recapHash, resolveInvoiceId, resolveInvoiceIds, savePdf 
 
 const server = new McpServer({
   name: "mahakam",
-  version: "1.3.0",
+  version: "1.4.0",
 })
 
 // --- healthcheck ---
@@ -192,8 +192,48 @@ server.tool(
   }
 )
 
-// --- Write (V50/V56: draft create only; number + totals are server-owned) ---
+// --- Write (V50/V56/V58: drafts only; number + totals are server-owned) ---
 const SERVER_OWNED = ["invoiceNumber", "status", "subtotal", "taxAmount", "total"] as const
+
+const itemSchema = z.object({
+  description: z.string().min(1),
+  quantity: z.number(),
+  unitPrice: z.number(),
+  productId: z.string().optional(),
+  unit: z.string().optional().describe("Server auto-fills from the product when omitted"),
+  discount: z.number().optional().describe("Discount percent 0-100"),
+})
+
+// Declared only so a caller supplying them hits the rejection instead of a silent strip.
+const rejectedSchema = {
+  invoiceNumber: z.string().optional(),
+  status: z.string().optional(),
+  subtotal: z.number().optional(),
+  taxAmount: z.number().optional(),
+  total: z.number().optional(),
+}
+
+// V58: PUT replaces the whole invoice, so everything editable is required here.
+const draftFields = {
+  customerId: z.string().min(1).describe("Existing customer ID"),
+  issueDate: z.string().min(1).describe("Issue date (YYYY-MM-DD) — a replacement must state it, it is not defaulted"),
+  dueDate: z.string().min(1).describe("Due date (YYYY-MM-DD)"),
+  items: z.array(itemSchema).min(1).describe("Invoice line items"),
+  notes: z.string().optional(),
+  terms: z.string().optional(),
+  taxId: z.string().optional(),
+  taxRate: z.number().optional(),
+}
+
+function rejectServerOwned(tool: string, args: unknown) {
+  const injected = SERVER_OWNED.filter((k) => (args as Record<string, unknown>)[k] !== undefined)
+  if (injected.length === 0) return null
+  return text({
+    error: true,
+    message: `${tool} does not accept ${injected.join(", ")} — the number is generated server-side, only drafts are created, and totals are computed from the items.`,
+    statusCode: 400,
+  })
+}
 
 server.tool(
   "create_invoice_draft",
@@ -201,47 +241,22 @@ server.tool(
   {
     customerId: z.string().min(1).describe("Existing customer ID"),
     dueDate: z.string().min(1).describe("Due date (YYYY-MM-DD)"),
-    items: z
-      .array(
-        z.object({
-          description: z.string().min(1),
-          quantity: z.number(),
-          unitPrice: z.number(),
-          productId: z.string().optional(),
-          unit: z.string().optional(),
-          discount: z.number().optional().describe("Discount percent 0-100"),
-        })
-      )
-      .min(1)
-      .describe("Invoice line items"),
+    items: z.array(itemSchema).min(1).describe("Invoice line items"),
     issueDate: z.string().optional().describe("Issue date (YYYY-MM-DD); server default when omitted"),
     notes: z.string().optional(),
     terms: z.string().optional(),
     taxId: z.string().optional(),
     taxRate: z.number().optional(),
-    // Declared so a caller supplying them hits the V56 rejection instead of a silent strip.
-    invoiceNumber: z.string().optional(),
-    status: z.string().optional(),
-    subtotal: z.number().optional(),
-    taxAmount: z.number().optional(),
-    total: z.number().optional(),
+    ...rejectedSchema,
   },
   async (args) => {
-    const injected = SERVER_OWNED.filter((k) => (args as Record<string, unknown>)[k] !== undefined)
-    if (injected.length > 0) {
-      return text({
-        error: true,
-        message: `create_invoice_draft does not accept ${injected.join(", ")} — the number is generated server-side, the invoice is always created as a draft, and totals are computed from the items.`,
-        statusCode: 400,
-      })
-    }
-
+    const rejected = rejectServerOwned("create_invoice_draft", args)
+    if (rejected) return rejected
     const { customerId, dueDate, items, issueDate, notes, terms, taxId, taxRate } = args
     // V56: this body is the whole write surface — no server-owned field ever leaves here.
-    const body = { customerId, dueDate, items, issueDate, notes, terms, taxId, taxRate }
     const created = await mahakamFetch<{ id: string }>("/invoices", "faktur", undefined, {
       method: "POST",
-      body,
+      body: { customerId, dueDate, items, issueDate, notes, terms, taxId, taxRate },
     })
     if ("error" in created) return text(created)
 
@@ -250,6 +265,45 @@ server.tool(
     if ("error" in pdf) return text(pdf)
 
     const { error, ...row } = created as Record<string, unknown> & { id: string }
+    return text({ ...row, path: pdf.path, filename: pdf.filename })
+  }
+)
+
+server.tool(
+  "update_invoice_draft",
+  "Replace a DRAFT invoice's contents (only drafts can be edited; a sent or paid invoice is rejected). This is a FULL replacement: customerId, issueDate, dueDate and items are all required — anything you omit is not carried over. The invoice keeps its number; totals are recomputed server-side. Returns the fresh row plus the regenerated PDF path.",
+  {
+    invoiceId: z.string().min(1).describe("Draft invoice ID (a sent/paid invoice is rejected)"),
+    ...draftFields,
+    ...rejectedSchema,
+  },
+  async (args) => {
+    const rejected = rejectServerOwned("update_invoice_draft", args)
+    if (rejected) return rejected
+
+    const { invoiceId, customerId, issueDate, dueDate, items, notes, terms, taxId, taxRate } = args
+    const current = await mahakamFetch<{ invoiceNumber: string; status: string }>(`/invoices/${invoiceId}`, "faktur")
+    if ("error" in current) return text(current)
+    if (current.status !== "draft") {
+      return text({
+        error: true,
+        message: `Faktur ${current.invoiceNumber} berstatus ${current.status} — hanya draft yang dapat diubah.`,
+        statusCode: 422,
+      })
+    }
+
+    // V58: the backend replaces the whole invoice; the number is re-sent so the draft keeps it.
+    const updated = await mahakamFetch<{ id: string }>(`/invoices/${invoiceId}`, "faktur", undefined, {
+      method: "PUT",
+      body: { customerId, issueDate, dueDate, items, notes, terms, taxId, taxRate, invoiceNumber: current.invoiceNumber },
+    })
+    if ("error" in updated) return text(updated)
+
+    const fetched = await mahakamFetchPdf(`/invoices/${invoiceId}/pdf`, "faktur")
+    const pdf = await savePdf(`faktur-${invoiceId}.pdf`, fetched)
+    if ("error" in pdf) return text(pdf)
+
+    const { error, ...row } = updated as Record<string, unknown> & { id: string }
     return text({ ...row, path: pdf.path, filename: pdf.filename })
   }
 )

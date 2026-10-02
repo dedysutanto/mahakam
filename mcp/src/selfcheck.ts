@@ -9,6 +9,7 @@ import path from "node:path"
 const PDF = Buffer.from("%PDF-1.4 mock")
 
 const created: { body?: any; count: number } = { count: 0 }
+const put: { body?: any; count: number } = { count: 0 }
 
 const server = createServer((req, res) => {
   if (req.url === "/api/invoices" && req.method === "POST") {
@@ -37,6 +38,33 @@ const server = createServer((req, res) => {
   } else if (req.url === "/api/invoices/noscope/pdf") {
     res.writeHead(403, { "content-type": "application/json" }).end("{}")
   } else if (req.url === "/api/invoices/recap" && req.method === "POST") {
+    res.writeHead(200, { "content-type": "application/pdf" }).end(PDF)
+  } else if (req.url === "/api/invoices/upd111" && req.method === "GET") {
+    res.writeHead(200, { "content-type": "application/json" }).end(
+      JSON.stringify({ id: "upd111", invoiceNumber: "009/INV/OSB/X/2026", status: "draft" })
+    )
+  } else if (req.url === "/api/invoices/sent222" && req.method === "GET") {
+    res.writeHead(200, { "content-type": "application/json" }).end(
+      JSON.stringify({ id: "sent222", invoiceNumber: "010/INV/OSB/X/2026", status: "sent" })
+    )
+  } else if (req.url === "/api/invoices/upd111" && req.method === "PUT") {
+    const chunks: Buffer[] = []
+    req.on("data", (c) => chunks.push(c))
+    req.on("end", () => {
+      put.count++
+      put.body = JSON.parse(Buffer.concat(chunks).toString())
+      res.writeHead(200, { "content-type": "application/json" }).end(
+        JSON.stringify({
+          id: "upd111",
+          invoiceNumber: put.body.invoiceNumber,
+          status: "draft",
+          subtotal: 200000,
+          taxAmount: 22000,
+          total: 222000,
+        })
+      )
+    })
+  } else if (req.url === "/api/invoices/upd111/pdf") {
     res.writeHead(200, { "content-type": "application/pdf" }).end(PDF)
   } else if (req.url?.startsWith("/api/invoices?")) {
     const num = new URL(req.url, "http://localhost").searchParams.get("invoiceNumber")
@@ -197,6 +225,33 @@ async function main() {
   // T78 / V57: customer lookup is reachable under the write call's scope and forwards filters
   const customers = await toolCall("list_customers", { search: "KMJ" })
   assert(customers.items[0].id === "cust1" && customers.totalCount === 1, "T78: customer list returned")
+
+  // T79 / V58: full-surface draft edit — number preserved, totals recomputed, server-owned rejected
+  const noPut = await toolCall("update_invoice_draft", {
+    invoiceId: "upd111", customerId: "cust1", issueDate: "2026-10-02", dueDate: "2026-10-31",
+    items: [{ description: "Jasa", quantity: 1, unitPrice: 200000 }], total: 999,
+  })
+  assert(noPut.error === true && noPut.statusCode === 400 && put.body === undefined, "V58: injected total rejected before any PUT")
+
+  const edited = await toolCall("update_invoice_draft", {
+    invoiceId: "upd111", customerId: "cust1", issueDate: "2026-10-02", dueDate: "2026-10-31",
+    items: [{ description: "Jasa revisi", quantity: 1, unitPrice: 200000 }], notes: "revisi",
+  })
+  assert(edited.subtotal === 200000 && edited.taxAmount === 22000 && edited.total === 222000, "V58: totals recomputed server-side")
+  assert(put.body.invoiceNumber === "009/INV/OSB/X/2026", "V58: draft keeps its number")
+  assert(put.body.notes === "revisi" && put.body.items[0].description === "Jasa revisi", "V58: replacement body sent")
+  assert(!("status" in put.body) && !("subtotal" in put.body), "V58: request body carries no server-owned field")
+  assert(
+    path.isAbsolute(edited.path) && readFileSync(edited.path).subarray(0, 5).toString() === "%PDF-",
+    "V58: regenerated PDF saved"
+  )
+
+  // V58: a non-draft never reaches the PUT
+  const sent = await toolCall("update_invoice_draft", {
+    invoiceId: "sent222", customerId: "cust1", issueDate: "2026-10-02", dueDate: "2026-10-31",
+    items: [{ description: "Jasa", quantity: 1, unitPrice: 1 }],
+  })
+  assert(sent.error === true && sent.statusCode === 422 && put.count === 1, "V58: non-draft rejected locally")
 
   rmSync(dir, { recursive: true, force: true })
   server.close()

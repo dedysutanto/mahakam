@@ -20,8 +20,8 @@ export async function mahakamFetch<T>(
   path: string,
   scope: string,
   params?: Record<string, string | undefined>,
-  // V56: only the draft-create tool posts JSON; every other caller stays a plain GET.
-  post?: { method: "POST"; body: unknown }
+  // V56/V58: only the two draft-write tools send a body; every other caller stays a plain GET.
+  write?: { method: "POST" | "PUT"; body: unknown }
 ): Promise<T | MahakamError> {
   const url = new URL(`/api${path}`, config.baseUrl)
   if (params) {
@@ -31,7 +31,7 @@ export async function mahakamFetch<T>(
   }
 
   const res = await fetch(url.toString(), {
-    ...(post ? { method: post.method, body: JSON.stringify(post.body) } : {}),
+    ...(write ? { method: write.method, body: JSON.stringify(write.body) } : {}),
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
