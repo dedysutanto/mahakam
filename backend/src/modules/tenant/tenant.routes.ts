@@ -276,7 +276,7 @@ export async function tenantRoutes(app: FastifyInstance) {
       description: 'Get all settings key-value pairs for the current company.',
       security: [{ BearerAuth: [] }],
     },
-    preValidation: [authHook(app)],
+    preValidation: [authHook(app), validateTenantHook(app)],
   }, async (request: any) => {
     const { tenantId } = request.user as any
     const settings = await prisma.setting.findMany({
@@ -297,7 +297,7 @@ export async function tenantRoutes(app: FastifyInstance) {
       security: [{ BearerAuth: [] }],
       body: { type: 'object', additionalProperties: { type: 'string' } },
     },
-    preValidation: [authHook(app), requireScope('pengaturan')],
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('pengaturan')],
   }, async (request: any, reply: any) => {
     const { tenantId } = request.user as any
     const entries = request.body as Record<string, string>

@@ -75,7 +75,13 @@ export function validateTenantHook(app: FastifyInstance, opts?: { fromParams?: b
       return
     }
 
-    // JWT auth — validate TenantUser membership
+    // JWT auth — validate TenantUser membership. Tenant-less tokens (super admin, or a user
+    // whose last membership was removed) carry no tenantId; reject before querying Prisma,
+    // otherwise `tenantId: undefined` throws and surfaces as a 500.
+    if (!tenantId) {
+      return reply.code(403).send({ error: 'Akses ditolak. Anda bukan anggota tenant ini.' })
+    }
+
     const checkId = opts?.fromParams ? ((request.params as any)?.id || tenantId) : tenantId
 
     const tenantUser = await prisma.tenantUser.findUnique({
@@ -84,8 +90,7 @@ export function validateTenantHook(app: FastifyInstance, opts?: { fromParams?: b
     })
 
     if (!tenantUser || !tenantUser.isActive) {
-      reply.code(403).send({ error: 'Akses ditolak. Anda bukan anggota tenant ini.' })
-      return
+      return reply.code(403).send({ error: 'Akses ditolak. Anda bukan anggota tenant ini.' })
     }
 
     request.tenant = tenantUser.tenant

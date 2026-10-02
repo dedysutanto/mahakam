@@ -271,8 +271,12 @@ export async function authRoutes(app: FastifyInstance) {
       response: { 200: { type: 'object', properties: { authType: { type: 'string', enum: ['jwt', 'api-key'] }, tenantId: { type: 'string' }, tenantName: { type: ['string', 'null'] }, role: { type: 'string' }, scopes: { type: 'array', items: { type: 'string' } } } } },
     },
     preValidation: [authHook(app)],
-  }, async (request: any) => {
+  }, async (request: any, reply: any) => {
     const { userId, tenantId, role, scopes, email } = request.user as any
+
+    if (userId !== 'api-key' && !tenantId) {
+      return reply.code(403).send({ error: 'Akses ditolak. Anda bukan anggota tenant ini.' })
+    }
 
     // API key auth
     if (userId === 'api-key') {
