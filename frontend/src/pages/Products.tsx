@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { ArrowLeft, Plus, Search, Package, Trash2, Pencil } from 'lucide-react'
 import { formatCurrency } from '../lib/utils'
+import { dialog } from '../lib/DialogContext'
 
 interface Product {
   id: string
@@ -89,7 +90,7 @@ export default function Products() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus produk ini?')) return
+    if (!(await dialog.confirm('Hapus produk ini?', { destructive: true }))) return
     try {
       const res = await fetch(`/api/products/${id}`, { method: 'DELETE' })
       if (!res.ok) {

@@ -5,6 +5,7 @@ import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
 import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { Plus, Search, FileText, Trash2, Eye, Pencil, Download, ArrowRightCircle, ArrowLeft } from 'lucide-react'
+import { dialog } from '../lib/DialogContext'
 
 const toDateInput = (d: Date) =>
   new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
@@ -129,9 +130,9 @@ export default function Quotes() {
   )
 
   // ---------- form helpers ----------
-  const handleCustomerSelect = (value: string) => {
+  const handleCustomerSelect = async (value: string) => {
     if (value === NEW_CUSTOMER) {
-      const name = prompt('Nama pelanggan baru:')
+      const name = await dialog.prompt('Nama pelanggan baru:')
       if (!name) return
       fetch('/api/customers/', {
         method: 'POST',
@@ -359,7 +360,7 @@ export default function Quotes() {
   }
 
   const handleConvert = async (id: string) => {
-    if (!confirm('Konversi penawaran ini menjadi faktur? Penawaran akan terkunci setelah dikonversi.')) return
+    if (!(await dialog.confirm('Konversi penawaran ini menjadi faktur? Penawaran akan terkunci setelah dikonversi.'))) return
     setConverting(true)
     try {
       const res = await fetch(`/api/quotations/${id}/convert`, { method: 'POST' })
@@ -378,7 +379,7 @@ export default function Quotes() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus penawaran ini?')) return
+    if (!(await dialog.confirm('Hapus penawaran ini?', { destructive: true }))) return
     try {
       const res = await fetch(`/api/quotations/${id}`, { method: 'DELETE' })
       if (!res.ok) {

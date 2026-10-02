@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { ArrowLeft, Plus, Percent, Trash2, Pencil } from 'lucide-react'
+import { dialog } from '../lib/DialogContext'
 
 interface Tax {
   id: string
@@ -69,7 +70,7 @@ export default function Taxes() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus pajak ini?')) return
+    if (!(await dialog.confirm('Hapus pajak ini?', { destructive: true }))) return
     try {
       const res = await fetch(`/api/taxes/${id}`, { method: 'DELETE' })
       if (!res.ok) {

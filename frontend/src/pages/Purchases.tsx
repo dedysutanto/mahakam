@@ -5,6 +5,7 @@ import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
 import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { ArrowLeft, Plus, Search, ShoppingCart, Trash2, Eye, Pencil } from 'lucide-react'
+import { dialog } from '../lib/DialogContext'
 
 interface PurchaseItem {
   id: string
@@ -234,7 +235,7 @@ export default function Purchases() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus pembelian ini?')) return
+    if (!(await dialog.confirm('Hapus pembelian ini?', { destructive: true }))) return
     try {
       const res = await fetch(`/api/purchases/${id}`, { method: 'DELETE' })
       if (!res.ok) {

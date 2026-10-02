@@ -6,6 +6,7 @@ import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
 import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { Plus, Search, FileText, ArrowLeft, Trash2, Eye, Pencil, Download, Wallet, Tag, Wand2, PenSquare } from 'lucide-react'
+import { dialog } from '../lib/DialogContext'
 
 interface InvoiceItem {
   description: string
@@ -527,7 +528,7 @@ export default function Invoices() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus faktur ini?')) return
+    if (!(await dialog.confirm('Hapus faktur ini?', { destructive: true }))) return
     try {
       const res = await fetch(`/api/invoices/${id}`, { method: 'DELETE' })
       if (!res.ok) {

@@ -5,6 +5,7 @@ import { PROVINCES_ID, DEFAULT_COUNTRY } from '../lib/regions'
 import { useAuth } from '../lib/AuthContext'
 import { UserPlus, Power, Pencil, Trash2, Key, Package } from 'lucide-react'
 import { formatDateDMY } from '../lib/utils'
+import { dialog } from '../lib/DialogContext'
 
 const KINDS = [
   { key: 'invoice', label: 'Faktur', defaultFormat: '{000}/INV/{RM}/{YYYY}' },
@@ -147,7 +148,7 @@ export default function SettingsPage() {
   }
 
   const handleDeleteApiKey = async (keyId: string, name: string) => {
-    if (!confirm(`Hapus API key "${name}"? Aksi ini tidak dapat dibatalkan.`)) return
+    if (!(await dialog.confirm(`Hapus API key "${name}"? Aksi ini tidak dapat dibatalkan.`, { destructive: true }))) return
     try {
       const res = await fetch(`/api/tenants/${tenantId}/api-keys/${keyId}`, { method: 'DELETE' })
       const data = await res.json()
@@ -216,7 +217,7 @@ export default function SettingsPage() {
   }
 
   const handleDeleteMember = async (m: Member) => {
-    if (!confirm(`Hapus pengguna ${m.fullName}? Akses ke perusahaan ini akan dicabut.`)) return
+    if (!(await dialog.confirm(`Hapus pengguna ${m.fullName}? Akses ke perusahaan ini akan dicabut.`, { destructive: true }))) return
     try {
       const res = await fetch(`/api/tenants/${tenantId}/members/${m.userId}`, { method: 'DELETE' })
       const data = await res.json()

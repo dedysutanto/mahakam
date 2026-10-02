@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { useFormHistory } from '../lib/useFormHistory'
 import { Plus, Pencil, Trash2, BookOpen, Search } from 'lucide-react'
+import { dialog } from '../lib/DialogContext'
 
 interface Ledger {
   id: string
@@ -68,7 +69,7 @@ export default function Ledgers() {
 
   const handleEditAccount = async (acc: any) => {
     if (acc.isSystem) return
-    const name = prompt('Nama akun:', acc.name)
+    const name = await dialog.prompt('Nama akun:', acc.name)
     if (!name || name === acc.name) return
     try {
       const res = await fetch(`/api/ledgers/${acc.id}`, {
@@ -87,7 +88,7 @@ export default function Ledgers() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus akun ini?')) return
+    if (!(await dialog.confirm('Hapus akun ini?', { destructive: true }))) return
     try {
       await fetch(`/api/ledgers/${id}`, { method: 'DELETE' })
       fetchLedgers()

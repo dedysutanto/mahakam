@@ -5,6 +5,7 @@ import { formatCurrency, formatDateDMY } from '../lib/utils'
 import DatePicker from '../components/DatePicker'
 import PeriodFilter, { matchPeriod } from '../components/PeriodFilter'
 import { ArrowLeft, Plus, Search, Receipt, Trash2, Pencil } from 'lucide-react'
+import { dialog } from '../lib/DialogContext'
 
 interface Expense {
   id: string
@@ -137,7 +138,7 @@ export default function Expenses() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus pengeluaran ini?')) return
+    if (!(await dialog.confirm('Hapus pengeluaran ini?', { destructive: true }))) return
     try {
       await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
       fetchData()

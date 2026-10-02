@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { ThemeProvider } from './lib/ThemeContext'
+import { DialogProvider, installDialogGlobals } from './lib/DialogContext'
 import 'flatpickr/dist/flatpickr.min.css'
 import './index.css'
 
@@ -36,6 +37,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   return originalFetch(input, init)
 }
 
+
+// Replace native alert/confirm/prompt with the in-app dialog host (V60).
+installDialogGlobals()
 // Register service worker for offline asset caching
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -46,7 +50,9 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <DialogProvider>
+        <App />
+      </DialogProvider>
     </ThemeProvider>
   </StrictMode>
 )
