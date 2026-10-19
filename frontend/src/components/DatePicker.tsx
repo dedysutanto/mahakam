@@ -17,9 +17,15 @@ export default function DatePicker({ value, onChange, placeholder, disabled, req
 
   useEffect(() => {
     if (!inputRef.current) return
+    // V63: flatpickr's `isMobile` mode swaps the visible field for a second, hidden-behind
+    // native <input type="date"> (US format on an en-US device). The visible field stays
+    // `readonly`, tapping it opens nothing, and the native field's change event is swallowed —
+    // so on a phone the date could not be edited at all. Keep one field and the real calendar.
     fpRef.current = flatpickr(inputRef.current, {
       dateFormat: 'd/m/Y',
       locale: Indonesian,
+      disableMobile: true,
+      allowInput: true,
       onChange: (selectedDates) => {
         if (selectedDates[0]) {
           const y = selectedDates[0].getFullYear()
