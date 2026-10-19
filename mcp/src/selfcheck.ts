@@ -35,7 +35,7 @@ const server = createServer((req, res) => {
   } else if (req.url === "/api/invoices/good123/pdf") {
     res.writeHead(200, { "content-type": "application/pdf" }).end(PDF)
   } else if (req.url === "/api/invoices/miss999/pdf") {
-    res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ message: "Faktur tidak ditemukan" }))
+    res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ message: "Faktur tidak ditemukan" }))
   } else if (req.url === "/api/invoices/noscope/pdf") {
     res.writeHead(403, { "content-type": "application/json" }).end("{}")
   } else if (req.url === "/api/invoices/recap" && req.method === "POST") {
@@ -51,8 +51,8 @@ const server = createServer((req, res) => {
   } else if (req.url === "/api/invoices/newinv1" && req.method === "GET") {
     // V61: the row exists as a draft until the DELETE lands, then it is gone.
     if (deleted.count > 0) {
-      // deployed API throws on a missing row, so the status is 500 (not 404) — mirrored here on purpose
-      res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ message: "Faktur tidak ditemukan" }))
+      // deployed API throws on a missing row; V65 maps that deliberate throw to 400 — mirrored here on purpose
+      res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ message: "Faktur tidak ditemukan" }))
     } else {
       res.writeHead(200, { "content-type": "application/json" }).end(
         JSON.stringify({ id: "newinv1", invoiceNumber: "001/INV/OSB/X/2026", status: "draft" })
@@ -141,9 +141,9 @@ async function main() {
   const { mahakamFetchPdf } = await import("./client.js")
   const { ID_MSG, ID_RE, recapHash, resolveInvoiceId, resolveInvoiceIds, savePdf } = await import("./pdf.js")
 
-  // V53: 500 JSON → error object, never a file
+  // V53: non-200 JSON → error object, never a file
   const miss = await mahakamFetchPdf("/invoices/miss999/pdf", "faktur")
-  assert("error" in miss && miss.statusCode === 500, "V53: 500 maps to error object")
+  assert("error" in miss && miss.statusCode === 400, "V53: 400 maps to error object")
   const saved1 = await savePdf("faktur-miss999.pdf", miss)
   assert("error" in saved1, "V53: error result not saved")
   assert(!existsSync(path.join(dir, "faktur-miss999.pdf")), "V53: no file left behind on error")
@@ -280,7 +280,7 @@ async function main() {
   assert(removed.invoiceNumber === "001/INV/OSB/X/2026", "V61: response echoes the number")
   assert(deleted.count === 1, "V61: exactly one DELETE sent")
   const goneAfter = await toolCall("get_invoice", { id: "newinv1" })
-  assert(goneAfter.error === true && goneAfter.statusCode === 500, "V61: row gone after delete")
+  assert(goneAfter.error === true && goneAfter.statusCode === 400, "V61: row gone after delete")
 
   // V61: a non-draft is rejected locally — zero DELETE reaches the API
   const sentDel = await toolCall("delete_invoice_draft", { invoiceRef: "sent222" })

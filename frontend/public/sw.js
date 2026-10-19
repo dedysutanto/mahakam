@@ -1,4 +1,7 @@
-const CACHE_NAME = 'mahakam-v1'
+// V64: cache name is version-scoped from the register URL (`/sw.js?v=<APP_VERSION>`).
+// A new version = a new URL = a new cache; `activate` then drops the old one.
+const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev'
+const CACHE_NAME = `mahakam-${VERSION}`
 const STATIC_ASSETS = [
   '/',
   '/index.html',

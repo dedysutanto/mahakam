@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { APP_VERSION } from './config'
 import App from './App'
 import { ThemeProvider } from './lib/ThemeContext'
 import { DialogProvider, installDialogGlobals } from './lib/DialogContext'
@@ -43,7 +44,7 @@ installDialogGlobals()
 // Register service worker for offline asset caching
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
+    navigator.serviceWorker.register(`/sw.js?v=${APP_VERSION}`).catch(() => {})
   })
 }
 
