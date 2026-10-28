@@ -96,7 +96,7 @@ export async function quotationRoutes(app: FastifyInstance) {
       }
     }
 
-    const quotationNumber = await generateDocNumber('quotation', tenantId)
+    const quotationNumber = await generateDocNumber('quotation', tenantId, parsedIssueDate)
     const disc = Number(discount || 0)
 
     let subtotal = 0
@@ -259,7 +259,8 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
     if (quotation.status !== 'accepted') throw new Error('Hanya penawaran berstatus diterima yang bisa dikonversi')
     if (quotation.convertedInvoiceId) throw new Error('Penawaran ini sudah pernah dikonversi menjadi faktur')
 
-    const invoiceNumber = await generateDocNumber('invoice', tenantId)
+    // The converted invoice is issued today (issueDate below), so number it for today.
+    const invoiceNumber = await generateDocNumber('invoice', tenantId, new Date())
 
     const invoice = await prisma.invoice.create({
       data: {

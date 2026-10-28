@@ -161,7 +161,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
       })
       if (clash) throw new Error('Nomor faktur sudah digunakan')
     } else {
-      invoiceNumber = await generateDocNumber('invoice', tenantId)
+      invoiceNumber = await generateDocNumber('invoice', tenantId, parsedIssueDate)
     }
 
     const taxRate = await resolveTaxRate(tenantId, taxId, bodyTaxRate)

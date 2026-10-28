@@ -105,8 +105,10 @@ export async function expenseRoutes(app: FastifyInstance) {
       resolvedVendorName = vendor.name
     }
 
-    // Generate expense number (max-based, collision-safe)
-    const expenseNumber = await generateDocNumber('expense', tenantId)
+    // Generate expense number (max-based, collision-safe), anchored to the expense date
+    const parsedDate = date ? new Date(date) : new Date()
+    if (isNaN(parsedDate.getTime())) throw new Error('Tanggal pengeluaran tidak valid')
+    const expenseNumber = await generateDocNumber('expense', tenantId, parsedDate)
 
     const expense = await prisma.expense.create({
       data: {
@@ -117,7 +119,7 @@ export async function expenseRoutes(app: FastifyInstance) {
         vendorName: resolvedVendorName,
         description,
         amount,
-        date: new Date(date),
+        date: parsedDate,
         category,
         receiptUrl,
         notes,
@@ -132,7 +134,7 @@ export async function expenseRoutes(app: FastifyInstance) {
       data: {
         tenantId,
         journalNumber: `JE-${expense.expenseNumber}`,
-        date: new Date(date),
+        date: parsedDate,
         description: `Pengeluaran: ${description}`,
         referenceType: 'expense',
         referenceId: expense.id,

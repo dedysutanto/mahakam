@@ -88,7 +88,8 @@ const DELEGATES: Record<string, { model: any; field: string; dateField: string }
 
 export async function generateDocNumber(
   kind: 'invoice' | 'expense' | 'purchase' | 'quotation',
-  tenantId: string
+  tenantId: string,
+  docDate: Date = new Date()
 ): Promise<string> {
   const { model, field, dateField } = DELEGATES[kind]
 
@@ -114,8 +115,9 @@ export async function generateDocNumber(
     return `${LEGACY_PREFIX[kind]}-0001`
   }
 
-  // 5. Render tokens for the candidate
-  const now = new Date()
+  // 5. Render tokens for the candidate, anchored to the document date rather than
+  //    today: a back-dated document must carry its own month's numeral and reset window.
+  const now = docDate
   const abbr = await getSetting(tenantId, 'company_abbreviation', '')
   const renderedPrefix = renderTokens(parsed.prefix, now, abbr)
   const renderedSuffix = renderTokens(parsed.suffix, now, abbr)

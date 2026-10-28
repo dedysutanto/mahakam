@@ -79,7 +79,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
       }
     }
 
-    const purchaseNumber = await generateDocNumber('purchase', tenantId)
+    const purchaseNumber = await generateDocNumber('purchase', tenantId, parsedOrderDate)
 
     let subtotal = 0
     const purchaseItems = items.map((item: any) => {
