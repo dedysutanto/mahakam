@@ -368,6 +368,7 @@ export default function Expenses() {
                     <td className="px-5 py-3 text-sm text-muted-foreground">
                       {exp.ledger.code} - {exp.ledger.name}
                     </td>
+                    <td className="px-5 py-3 text-sm whitespace-nowrap text-muted-foreground">{formatDateDMY(exp.date)}</td>
                     <td className="px-5 py-3 text-sm text-right font-semibold text-destructive">{formatCurrency(exp.amount)}</td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
