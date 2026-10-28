@@ -25,7 +25,7 @@ export async function expenseRoutes(app: FastifyInstance) {
       prisma.expense.findMany({
         where,
         include: { ledger: { select: { code: true, name: true } } },
-        orderBy: { date: 'desc' },
+        orderBy: [{ date: 'desc' }, { expenseNumber: 'desc' }],
         skip,
         take,
       }),
