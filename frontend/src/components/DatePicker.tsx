@@ -14,6 +14,12 @@ interface DatePickerProps {
 export default function DatePicker({ value, onChange, placeholder, disabled, required, className }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const fpRef = useRef<flatpickr.Instance | null>(null)
+  // flatpickr is created once, so its `onChange` would keep calling the first
+  // render's prop — every caller spreads that closure's state object
+  // (`setFormData({ ...formData, date: v })`), which silently reverted all other
+  // fields to their initial values when the date was changed (B49).
+  const onChangeRef = useRef(onChange)
+  useEffect(() => { onChangeRef.current = onChange })
 
   useEffect(() => {
     if (!inputRef.current) return
@@ -31,9 +37,9 @@ export default function DatePicker({ value, onChange, placeholder, disabled, req
           const y = selectedDates[0].getFullYear()
           const m = String(selectedDates[0].getMonth() + 1).padStart(2, '0')
           const d = String(selectedDates[0].getDate()).padStart(2, '0')
-          onChange(`${y}-${m}-${d}`)
+          onChangeRef.current(`${y}-${m}-${d}`)
         } else {
-          onChange('')
+          onChangeRef.current('')
         }
       },
     })
