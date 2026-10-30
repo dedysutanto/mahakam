@@ -266,6 +266,8 @@ model Customer {
   expenses    Expense[]
 
   @@unique([tenantId, email])
+  // Name uniqueness per tenant+type is case/whitespace-insensitive, which Prisma
+  // cannot express: enforced by the functional index in migration 20261030090000.
   @@index([tenantId, type])
   @@map("customers")
 }

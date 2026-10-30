@@ -45,6 +45,8 @@ export default function Expenses() {
   const emptyNewVendor = { name: '', email: '', phone: '' }
   const [newVendorOpen, setNewVendorOpen] = useState(false)
   const [newVendor, setNewVendor] = useState(emptyNewVendor)
+  // A double click (or a retried tap on mobile) must not create the contact twice.
+  const [savingVendor, setSavingVendor] = useState(false)
 
   const fetchData = () => {
     Promise.all([
@@ -79,6 +81,8 @@ export default function Expenses() {
   }
 
   const handleCreateVendor = async () => {
+    if (savingVendor) return
+    setSavingVendor(true)
     try {
       const res = await fetch('/api/customers/', {
         method: 'POST',
@@ -90,12 +94,19 @@ export default function Expenses() {
         throw new Error(err.message || 'Gagal membuat vendor')
       }
       const created = await res.json()
-      setVendors([...vendors, created])
+      // 200 means the backend matched an existing contact instead of inserting.
+      if (created.duplicate) {
+        setVendors((v) => (v.some((c) => c.id === created.id) ? v : [...v, created]))
+      } else {
+        setVendors([...vendors, created])
+      }
       setFormData((f) => ({ ...f, vendorId: created.id }))
       setNewVendorOpen(false)
       setNewVendor(emptyNewVendor)
     } catch (err: any) {
       alert(err.message)
+    } finally {
+      setSavingVendor(false)
     }
   }
 
@@ -308,8 +319,8 @@ export default function Expenses() {
                     <button type="button" className="btn btn-secondary" onClick={() => { setNewVendorOpen(false); setNewVendor(emptyNewVendor) }}>
                       Batal
                     </button>
-                    <button type="button" className="btn btn-primary" onClick={handleCreateVendor}>
-                      Simpan Vendor
+                    <button type="button" className="btn btn-primary" onClick={handleCreateVendor} disabled={savingVendor || !newVendor.name.trim()}>
+                      {savingVendor ? 'Menyimpan...' : 'Simpan Vendor'}
                     </button>
                   </div>
                 </div>

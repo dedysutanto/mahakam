@@ -67,19 +67,52 @@ export async function customerRoutes(app: FastifyInstance) {
 
     if (!name) throw new Error('Nama wajib diisi')
 
-    const customer = await prisma.customer.create({
-      data: {
-        tenantId,
-        name,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
-        province: province || null,
-        country: country || null,
-        taxId: taxId || null,
-        type: type || 'customer',
-      },
+    const trimmedName = String(name).trim()
+    const contactType = type || 'customer'
+
+    // The form offers "buat vendor baru" next to the existing list, so the same
+    // name arrives repeatedly. Return the existing contact instead of adding a
+    // second row (V69). Case-insensitive, per tenant, per type: a vendor and a
+    // customer may legitimately share a name.
+    const existing = await prisma.customer.findFirst({
+      where: { tenantId, type: contactType, name: { equals: trimmedName, mode: 'insensitive' } },
+      select: { id: true, name: true, type: true },
     })
+    if (existing) {
+      reply.code(200).send({ ...existing, duplicate: true, message: 'Kontak sudah ada' })
+      return
+    }
+
+    let customer
+    try {
+      customer = await prisma.customer.create({
+        data: {
+          tenantId,
+          name: trimmedName,
+          email: email || null,
+          phone: phone || null,
+          address: address || null,
+          province: province || null,
+          country: country || null,
+          taxId: taxId || null,
+          type: contactType,
+        },
+      })
+    } catch (err: any) {
+      // Concurrent submissions both pass findFirst; the unique index is the
+      // authority. P2002 -> return the winner rather than failing the request.
+      if (err?.code === 'P2002') {
+        const winner = await prisma.customer.findFirst({
+          where: { tenantId, type: contactType, name: { equals: trimmedName, mode: 'insensitive' } },
+          select: { id: true, name: true, type: true },
+        })
+        if (winner) {
+          reply.code(200).send({ ...winner, duplicate: true, message: 'Kontak sudah ada' })
+          return
+        }
+      }
+      throw err
+    }
 
     reply.code(201).send(customer)
   })
@@ -98,6 +131,21 @@ export async function customerRoutes(app: FastifyInstance) {
 
     const allowed = (({ name, email, phone, address, province, country, taxId, type }) =>
       ({ name, email, phone, address, province, country, taxId, type }))(body)
+    if (typeof allowed.name === 'string') allowed.name = allowed.name.trim()
+    if (allowed.type === undefined) delete allowed.type
+
+    if (allowed.name || allowed.type) {
+      const clash = await prisma.customer.findFirst({
+        where: {
+          tenantId,
+          type: allowed.type ?? existing.type,
+          name: { equals: allowed.name ?? existing.name, mode: 'insensitive' },
+          NOT: { id },
+        },
+        select: { id: true },
+      })
+      if (clash) throw new Error('Kontak dengan nama tersebut sudah ada')
+    }
 
     const customer = await prisma.customer.update({
       where: { id },
