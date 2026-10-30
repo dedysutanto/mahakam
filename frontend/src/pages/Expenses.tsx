@@ -213,6 +213,15 @@ export default function Expenses() {
           <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Tanggal</label>
+                <DatePicker
+                  required
+                  className="input"
+                  value={formData.date}
+                  onChange={(v) => setFormData({ ...formData, date: v })}
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Akun Beban</label>
                 <select
                   className="input"
@@ -255,7 +264,7 @@ export default function Expenses() {
                   placeholder="100000"
                 />
               </div>
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-foreground mb-1">Deskripsi</label>
                 <input
                   type="text"
@@ -266,16 +275,7 @@ export default function Expenses() {
                   placeholder="Deskripsi pengeluaran"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Tanggal</label>
-                <DatePicker
-                  required
-                  className="input"
-                  value={formData.date}
-                  onChange={(v) => setFormData({ ...formData, date: v })}
-                />
-              </div>
-              <div className="md:col-span-2">
+              <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-foreground mb-1">Catatan</label>
                 <input
                   type="text"
