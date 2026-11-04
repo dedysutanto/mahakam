@@ -355,15 +355,56 @@ export default function Expenses() {
           />
         </div>
 
+        {/* Mobile list: the table below needs ~950px, so a phone can never reach Jumlah or Aksi */}
+        <div className="md:hidden bg-card rounded-xl border border-border shadow-sm divide-y divide-border">
+          {filtered.map((exp) => (
+            <div key={exp.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <span className="font-mono text-xs text-muted-foreground">{exp.expenseNumber}</span>
+                <span className="text-sm font-semibold text-destructive whitespace-nowrap">{formatCurrency(exp.amount)}</span>
+              </div>
+              <p className="text-sm text-foreground break-words">{exp.description}</p>
+              <div className="flex items-end justify-between gap-2">
+                <div className="min-w-0 text-xs text-muted-foreground">
+                  <p>{formatDateDMY(exp.date)}</p>
+                  <p className="truncate">{exp.vendorName || '-'} · {exp.ledger.code}</p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => openEdit(exp)}
+                    aria-label="Edit"
+                    className="p-2 text-muted-foreground hover:text-primary"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(exp.id)}
+                    aria-label="Hapus"
+                    className="p-2 text-muted-foreground/70 hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="text-center py-12">
+              <Receipt className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-muted-foreground">Tidak ada pengeluaran ditemukan</p>
+            </div>
+          )}
+        </div>
+
         {/* Table */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="hidden md:block bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border">No. Pengeluaran</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[160px] sticky left-[150px] z-20 bg-muted backdrop-blur border-r border-border">Deskripsi</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px] sticky left-[310px] z-20 bg-muted backdrop-blur border-r border-border">Vendor</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">No. Pengeluaran</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Deskripsi</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vendor</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Akun</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jumlah</th>
@@ -373,19 +414,20 @@ export default function Expenses() {
               <tbody className="divide-y divide-border">
                 {filtered.map((exp) => (
                   <tr key={exp.id} className="hover:bg-muted">
-                    <td className="px-5 py-3 text-sm font-mono text-muted-foreground min-w-[150px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border">{exp.expenseNumber}</td>
-                    <td className="px-5 py-3 text-sm text-foreground min-w-[160px] sticky left-[150px] z-20 bg-card/95 backdrop-blur border-r border-border">{exp.description}</td>
-                    <td className="px-5 py-3 text-sm text-muted-foreground min-w-[120px] sticky left-[310px] z-20 bg-card/95 backdrop-blur border-r border-border">{exp.vendorName || '-'}</td>
+                    <td className="px-5 py-3 text-sm font-mono text-muted-foreground whitespace-nowrap">{exp.expenseNumber}</td>
+                    <td className="px-5 py-3 text-sm text-foreground">{exp.description}</td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground">{exp.vendorName || '-'}</td>
                     <td className="px-5 py-3 text-sm text-muted-foreground">
                       {exp.ledger.code} - {exp.ledger.name}
                     </td>
                     <td className="px-5 py-3 text-sm whitespace-nowrap text-muted-foreground">{formatDateDMY(exp.date)}</td>
-                    <td className="px-5 py-3 text-sm text-right font-semibold text-destructive">{formatCurrency(exp.amount)}</td>
+                    <td className="px-5 py-3 text-sm text-right font-semibold text-destructive whitespace-nowrap">{formatCurrency(exp.amount)}</td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => openEdit(exp)}
                           title="Edit"
+                          aria-label="Edit"
                           className="p-1 text-muted-foreground hover:text-primary"
                         >
                           <Pencil className="w-4 h-4" />
@@ -393,6 +435,7 @@ export default function Expenses() {
                         <button
                           onClick={() => handleDelete(exp.id)}
                           title="Hapus"
+                          aria-label="Hapus"
                           className="p-1 text-muted-foreground/70 hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />
