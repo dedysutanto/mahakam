@@ -463,8 +463,9 @@ export default function Purchases() {
                   <span className="text-sm font-semibold text-foreground">Total: {formatCurrency(formTotal)}</span>
                 </div>
                 {formData.items.map((item, idx) => (
+                  // Two rows below md: produk+deskripsi, then qty+satuan+harga+hapus (V74)
                   <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
-                    <div className="col-span-3">
+                    <div className="col-span-6 md:col-span-3">
                       <select
                         className="input"
                         value={item.productId}
@@ -478,7 +479,7 @@ export default function Purchases() {
                         <option value="__new__">+ Produk baru...</option>
                       </select>
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-6 md:col-span-3">
                       <input
                         type="text"
                         required
@@ -489,7 +490,7 @@ export default function Purchases() {
                         onChange={(e) => setItem(idx, { description: e.target.value })}
                       />
                     </div>
-                    <div className="col-span-1">
+                    <div className="col-span-2 md:col-span-1">
                       <input
                         type="number" min="1" className="input" placeholder="Qty" title="Qty"
                         value={item.quantity}
@@ -497,7 +498,7 @@ export default function Purchases() {
                         onChange={(e) => setItem(idx, { quantity: Number(e.target.value) })}
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-3 md:col-span-2">
                       <select
                         className="input text-xs"
                         title="Satuan"
@@ -510,7 +511,7 @@ export default function Purchases() {
                         ))}
                       </select>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-5 md:col-span-2">
                       <input
                         type="number" min="0" className="input" placeholder="Harga" title="Harga"
                         value={item.unitPrice}
@@ -518,7 +519,7 @@ export default function Purchases() {
                         onChange={(e) => setItem(idx, { unitPrice: Number(e.target.value) })}
                       />
                     </div>
-                    <div className="col-span-1 flex justify-end">
+                    <div className="col-span-2 md:col-span-1 flex justify-end">
                       {formData.items.length > 1 && (
                         <button
                           type="button"
