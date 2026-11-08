@@ -558,6 +558,7 @@ export default function Purchases() {
                 <textarea
                   className="input min-h-[60px]"
                   value={formData.notes}
+                  disabled={formMode === 'view'}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Catatan tambahan..."
                 />
