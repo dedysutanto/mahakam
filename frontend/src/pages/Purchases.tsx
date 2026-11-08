@@ -10,6 +10,7 @@ import { dialog } from '../lib/DialogContext'
 interface PurchaseItem {
   id: string
   productId?: string | null
+  unit: string
   description: string
   quantity: number
   unitPrice: number
@@ -55,9 +56,12 @@ export default function Purchases() {
     vendorId: '',
     orderDate: todayStr,
     taxId: '',
-    items: [{ productId: '', description: '', quantity: 1, unitPrice: 0 }],
+    items: [{ productId: '', unit: 'pcs', description: '', quantity: 1, unitPrice: 0 }],
     notes: '',
   })
+
+  const DEFAULT_UNITS = ['pcs', 'unit', 'box', 'kg', 'liter', 'jam', 'lisensi', 'langganan']
+  const [unitOptions, setUnitOptions] = useState<string[]>(DEFAULT_UNITS)
 
   const [newVendorOpen, setNewVendorOpen] = useState(false)
   const emptyNewVendor = { name: '', email: '', phone: '' }
@@ -87,6 +91,18 @@ export default function Purchases() {
   }
 
   useEffect(() => { fetchData() }, [])
+  // Same tenant unit vocabulary the invoice form uses (V72).
+  useEffect(() => {
+    fetch('/api/tenants/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        try {
+          const parsed = JSON.parse(data.product_units || '')
+          if (Array.isArray(parsed) && parsed.length > 0) setUnitOptions(parsed.map(String))
+        } catch {}
+      })
+      .catch(() => {})
+  }, [])
 
   const filtered = purchases.filter((p) =>
     (p.purchaseNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -140,7 +156,7 @@ export default function Purchases() {
     setNewProdIdx(null)
     const p = products.find((x) => x.id === value)
     if (p) {
-      setItem(idx, { productId: p.id, description: p.name, unitPrice: Number(p.price) })
+      setItem(idx, { productId: p.id, unit: p.unit || 'pcs', description: p.name, unitPrice: Number(p.price) })
     }
   }
 
@@ -158,7 +174,7 @@ export default function Purchases() {
       }
       const created = await res.json()
       setProducts([...products, created])
-      setItem(newProdIdx, { productId: created.id, description: created.name, unitPrice: Number(created.price) })
+      setItem(newProdIdx, { productId: created.id, unit: created.unit || 'pcs', description: created.name, unitPrice: Number(created.price) })
       setNewProdIdx(null)
       setNewProduct({ name: '', price: 0 })
     } catch (err: any) {
@@ -172,7 +188,7 @@ export default function Purchases() {
     vendorId: '',
     orderDate: todayStr,
     taxId: '',
-    items: [{ productId: '', description: '', quantity: 1, unitPrice: 0 }],
+    items: [{ productId: '', unit: 'pcs', description: '', quantity: 1, unitPrice: 0 }],
     notes: '',
   })
 
@@ -186,6 +202,9 @@ export default function Purchases() {
   // ---------- actions ----------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // View mode is read-only: Enter inside a field used to fire this handler and
+    // silently POST a duplicate of the record being viewed (B45).
+    if (formMode === 'view') return
     try {
       const { taxId, ...rest } = formData
       const payload: any = { ...rest }
@@ -254,45 +273,22 @@ export default function Purchases() {
     return res.json()
   }
 
-  const openEdit = async (id: string) => {
+  const openPurchase = async (id: string, mode: 'edit' | 'view') => {
     try {
       const p = await loadIntoForm(id)
-      if (p.status !== 'draft') {
+      if (mode === 'edit' && p.status !== 'draft') {
         alert('Hanya pembelian berstatus draft yang bisa diedit')
         return
       }
       setEditingId(id)
-      setFormMode('edit')
+      setFormMode(mode)
       setFormData({
         vendorId: p.vendor?.id || '',
         orderDate: new Date(p.orderDate).toISOString().slice(0, 10),
         taxId: '__none__',
         items: (p.items || []).map((it: any) => ({
           productId: it.productId || '',
-          description: it.description,
-          quantity: Number(it.quantity),
-          unitPrice: Number(it.unitPrice),
-        })),
-        notes: p.notes || '',
-      })
-      setShowForm(true)
-      window.scrollTo({ top: 0 })
-    } catch (err: any) {
-      alert(err.message)
-    }
-  }
-
-  const openView = async (id: string) => {
-    try {
-      const p = await loadIntoForm(id)
-      setEditingId(id)
-      setFormMode('view')
-      setFormData({
-        vendorId: p.vendor?.id || '',
-        orderDate: new Date(p.orderDate).toISOString().slice(0, 10),
-        taxId: '__none__',
-        items: (p.items || []).map((it: any) => ({
-          productId: it.productId || '',
+          unit: it.unit || 'pcs',
           description: it.description,
           quantity: Number(it.quantity),
           unitPrice: Number(it.unitPrice),
@@ -448,10 +444,11 @@ export default function Purchases() {
                 </div>
                 {formData.items.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <select
                         className="input"
                         value={item.productId}
+                        disabled={formMode === 'view'}
                         onChange={(e) => handleProductPick(idx, e.target.value)}
                       >
                         <option value="">Pilih produk...</option>
@@ -461,13 +458,14 @@ export default function Purchases() {
                         <option value="__new__">+ Produk baru...</option>
                       </select>
                     </div>
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <input
                         type="text"
                         required
                         className="input"
                         placeholder="Deskripsi"
                         value={item.description}
+                        disabled={formMode === 'view'}
                         onChange={(e) => setItem(idx, { description: e.target.value })}
                       />
                     </div>
@@ -475,13 +473,28 @@ export default function Purchases() {
                       <input
                         type="number" min="1" className="input" placeholder="Qty" title="Qty"
                         value={item.quantity}
+                        disabled={formMode === 'view'}
                         onChange={(e) => setItem(idx, { quantity: Number(e.target.value) })}
                       />
+                    </div>
+                    <div className="col-span-2">
+                      <select
+                        className="input text-xs"
+                        title="Satuan"
+                        value={item.unit || 'pcs'}
+                        disabled={formMode === 'view'}
+                        onChange={(e) => setItem(idx, { unit: e.target.value })}
+                      >
+                        {unitOptions.map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="col-span-2">
                       <input
                         type="number" min="0" className="input" placeholder="Harga" title="Harga"
                         value={item.unitPrice}
+                        disabled={formMode === 'view'}
                         onChange={(e) => setItem(idx, { unitPrice: Number(e.target.value) })}
                       />
                     </div>
@@ -524,18 +537,20 @@ export default function Purchases() {
                     </div>
                   </div>
                 )}
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:text-primary mt-1"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      items: [...formData.items, { productId: '', description: '', quantity: 1, unitPrice: 0 }],
-                    })
-                  }
-                >
-                  + Tambah Item
-                </button>
+                {formMode !== 'view' && (
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:text-primary mt-1"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        items: [...formData.items, { productId: '', unit: 'pcs', description: '', quantity: 1, unitPrice: 0 }],
+                      })
+                    }
+                  >
+                    + Tambah Item
+                  </button>
+                )}
               </div>
 
               <div>
@@ -550,11 +565,13 @@ export default function Purchases() {
 
               <div className="flex justify-end gap-2">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                  Batal
+                  {formMode === 'view' ? 'Tutup' : 'Batal'}
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Buat Pembelian
-                </button>
+                {formMode !== 'view' && (
+                  <button type="submit" className="btn btn-primary">
+                    {formMode === 'edit' ? 'Simpan Perubahan' : 'Buat Pembelian'}
+                  </button>
+                )}
               </div>
             </form>
           </div>
@@ -617,11 +634,11 @@ export default function Purchases() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openView(p.id)} title="Lihat detail" className="p-1 text-muted-foreground hover:text-primary">
+                        <button onClick={() => openPurchase(p.id, 'view')} title="Lihat detail" className="p-1 text-muted-foreground hover:text-primary">
                           <Eye className="w-4 h-4" />
                         </button>
                         {p.status === 'draft' && (
-                          <button onClick={() => openEdit(p.id)} title="Edit (draft)" className="p-1 text-muted-foreground hover:text-primary">
+                          <button onClick={() => openPurchase(p.id, 'edit')} title="Edit (draft)" className="p-1 text-muted-foreground hover:text-primary">
                             <Pencil className="w-4 h-4" />
                           </button>
                         )}

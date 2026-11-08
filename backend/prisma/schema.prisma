@@ -379,6 +379,7 @@ model PurchaseItem {
   id          String  @id @default(cuid())
   purchaseId  String
   productId   String?
+  unit        String  @default("pcs") @db.VarChar(20)
   description String  @db.VarChar(255)
   quantity    Decimal @db.Decimal(18, 2)
   unitPrice   Decimal @db.Decimal(18, 2)

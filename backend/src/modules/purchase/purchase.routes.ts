@@ -71,11 +71,14 @@ export async function purchaseRoutes(app: FastifyInstance) {
     const parsedOrderDate = orderDate ? new Date(orderDate) : new Date()
     if (isNaN(parsedOrderDate.getTime())) throw new Error('Tanggal pembelian tidak valid')
 
-    // Validate products belong to tenant when provided
+    // Validate products belong to tenant when provided, and remember their unit
+    // so an item without an explicit satuan inherits the product's.
+    const productUnits = new Map<string, string>()
     for (const item of items) {
       if (item.productId) {
         const product = await prisma.product.findFirst({ where: { id: item.productId, tenantId } })
         if (!product) throw new Error('Produk tidak ditemukan')
+        productUnits.set(product.id, product.unit)
       }
     }
 
@@ -87,6 +90,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
       subtotal += lineTotal
       return {
         productId: item.productId || null,
+        unit: String(item.unit || productUnits.get(item.productId) || 'pcs').slice(0, 20),
         description: item.description || '',
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -139,10 +143,12 @@ export async function purchaseRoutes(app: FastifyInstance) {
     const parsedOrderDate = orderDate ? new Date(orderDate) : existing.orderDate
     if (isNaN(parsedOrderDate.getTime())) throw new Error('Tanggal pembelian tidak valid')
 
+    const productUnits = new Map<string, string>()
     for (const item of items) {
       if (item.productId) {
         const product = await prisma.product.findFirst({ where: { id: item.productId, tenantId } })
         if (!product) throw new Error('Produk tidak ditemukan')
+        productUnits.set(product.id, product.unit)
       }
     }
 
@@ -152,6 +158,7 @@ export async function purchaseRoutes(app: FastifyInstance) {
       subtotal += lineTotal
       return {
         productId: item.productId || null,
+        unit: String(item.unit || productUnits.get(item.productId) || 'pcs').slice(0, 20),
         description: item.description || '',
         quantity: item.quantity,
         unitPrice: item.unitPrice,
