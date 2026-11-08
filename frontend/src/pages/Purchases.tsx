@@ -253,6 +253,26 @@ export default function Purchases() {
     }
   }
 
+  // Shared by the table and the mobile card list so the status flow is identical
+  // in both (V71).
+  const statusSelect = (p: Purchase) => {
+    const flow = ['draft', 'ordered', 'received']
+    const nexts = flow.slice(flow.indexOf(p.status) + 1)
+    if (nexts.length === 0) return null
+    return (
+      <select
+        value=""
+        onChange={(e) => e.target.value && handleStatus(p.id, e.target.value)}
+        className="text-xs border border-border rounded-lg px-2 py-1.5 bg-card text-foreground hover:border-ring focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+      >
+        <option value="">{statusLabels[p.status] || p.status} ▸</option>
+        {nexts.map((s) => (
+          <option key={s} value={s}>{statusLabels[s]}</option>
+        ))}
+      </select>
+    )
+  }
+
   const handleDelete = async (id: string) => {
     if (!(await dialog.confirm('Hapus pembelian ini?', { destructive: true }))) return
     try {
@@ -606,13 +626,55 @@ export default function Purchases() {
           </select>
         </div>
 
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        {/* Mobile list: the table needs ~900px, so a phone can never reach Total or Aksi (V71) */}
+        <div className="md:hidden bg-card rounded-xl border border-border shadow-sm divide-y divide-border">
+          {filtered.map((p) => (
+            <div key={p.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <span className="font-mono text-xs text-muted-foreground">{p.purchaseNumber}</span>
+                <span className="text-sm font-semibold text-foreground whitespace-nowrap">{formatCurrency(p.total)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm text-foreground break-words min-w-0">{p.vendor?.name}</p>
+                <span className={`badge flex-shrink-0 ${p.status === 'received' ? 'badge-success' : p.status === 'ordered' ? 'badge-info' : 'badge-default'}`}>
+                  {statusLabels[p.status] || p.status}
+                </span>
+              </div>
+              <div className="flex items-end justify-between gap-2">
+                <p className="text-xs text-muted-foreground">{formatDateDMY(p.orderDate)}</p>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => openPurchase(p.id, 'view')} aria-label="Lihat detail" className="p-2 text-muted-foreground hover:text-primary">
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  {p.status === 'draft' && (
+                    <button onClick={() => openPurchase(p.id, 'edit')} aria-label="Edit" className="p-2 text-muted-foreground hover:text-primary">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  {statusSelect(p)}
+                  <button onClick={() => handleDelete(p.id)} aria-label="Hapus" className="p-2 text-muted-foreground/70 hover:text-destructive">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="text-center py-12">
+              <ShoppingCart className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-muted-foreground">Tidak ada pembelian ditemukan</p>
+            </div>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="hidden md:block bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px] sticky left-0 z-20 bg-muted backdrop-blur border-r border-border">No. Pembelian</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px] sticky left-[150px] z-20 bg-muted backdrop-blur border-r border-border">Vendor</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px]">No. Pembelian</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[140px]">Vendor</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tanggal</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
@@ -622,10 +684,10 @@ export default function Purchases() {
               <tbody className="divide-y divide-border">
                 {filtered.map((p) => (
                   <tr key={p.id} className="hover:bg-muted">
-                    <td className="px-5 py-3 min-w-[150px] sticky left-0 z-20 bg-card/95 backdrop-blur border-r border-border">
+                    <td className="px-5 py-3 min-w-[150px]">
                       <span className="text-sm font-medium text-primary">{p.purchaseNumber}</span>
                     </td>
-                    <td className="px-5 py-3 text-sm text-foreground min-w-[140px] sticky left-[150px] z-20 bg-card/95 backdrop-blur border-r border-border">{p.vendor?.name}</td>
+                    <td className="px-5 py-3 text-sm text-foreground min-w-[140px]">{p.vendor?.name}</td>
                     <td className="px-5 py-3 text-sm text-muted-foreground">{formatDateDMY(p.orderDate)}</td>
                     <td className="px-5 py-3 text-sm text-right font-medium text-foreground">{formatCurrency(p.total)}</td>
                     <td className="px-5 py-3 text-center">
@@ -643,23 +705,7 @@ export default function Purchases() {
                             <Pencil className="w-4 h-4" />
                           </button>
                         )}
-                        {(() => {
-                          const flow = ['draft', 'ordered', 'received']
-                          const nexts = flow.slice(flow.indexOf(p.status) + 1)
-                          if (nexts.length === 0) return null
-                          return (
-                            <select
-                              value=""
-                              onChange={(e) => e.target.value && handleStatus(p.id, e.target.value)}
-                              className="text-xs border border-border rounded-lg px-2 py-1.5 bg-card text-foreground hover:border-ring focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-                            >
-                              <option value="">{statusLabels[p.status] || p.status} ▸</option>
-                              {nexts.map((s) => (
-                                <option key={s} value={s}>{statusLabels[s]}</option>
-                              ))}
-                            </select>
-                          )
-                        })()}
+                        {statusSelect(p)}
                         <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }} title="Hapus" className="p-1 text-muted-foreground/70 hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
