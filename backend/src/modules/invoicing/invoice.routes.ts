@@ -4,6 +4,7 @@ import { prisma } from '../../utils/db'
 import { generateDocNumber } from '../../utils/numbering'
 import { resolveTaxRate } from '../../utils/tax'
 import { generateInvoicePdf, generateRecapPdf } from '../../utils/pdf'
+import { generateCoretaxXml } from '../../utils/coretax'
 
 export async function invoiceRoutes(app: FastifyInstance) {
   // LIST INVOICES
@@ -202,6 +203,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
         customerProvince: customer.province,
         customerCountry: customer.country,
         customerPhone: customerPhone || customer.phone,
+        customerTaxId: customer.taxId,
         issueDate: parsedIssueDate,
         dueDate: parsedDueDate,
         subtotal,
@@ -311,6 +313,7 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
         customerProvince: customer.province,
         customerCountry: customer.country,
         customerPhone: customer.phone,
+        customerTaxId: customer.taxId,
         issueDate: parsedIssueDate,
         dueDate: parsedDueDate,
         subtotal,
@@ -531,5 +534,39 @@ const discPct = Math.min(Math.max(Number(item.discount || 0), 0), 100)
       .header('Content-Type', 'application/pdf')
       .header('Content-Disposition', 'inline; filename="rekap-penagihan.pdf"')
       .send(pdf)
+  })
+
+  // EXPORT CORETAX E-FAKTUR XML
+  app.post('/coretax-export', {
+    schema: {
+      tags: ['Faktur'],
+      summary: 'Export invoices as Coretax e-Faktur XML',
+      description: 'Generate a TaxInvoiceBulk XML file ready to upload to Coretax (import faktur pajak keluaran). Excludes drafts. Requires company_npwp in settings.',
+      security: [{ BearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          ids: { type: 'array', items: { type: 'string' } },
+          dateFrom: { type: 'string' },
+          dateTo: { type: 'string' },
+        },
+      },
+    },
+    preValidation: [authHook(app), validateTenantHook(app), requireScope('faktur')],
+  }, async (request: any, reply: any) => {
+    const { ids, dateFrom, dateTo } = (request.body || {}) as any
+    const { tenantId } = request.user as any
+
+    const xml = await generateCoretaxXml(tenantId, {
+      ids: Array.isArray(ids) ? ids : undefined,
+      dateFrom,
+      dateTo,
+    })
+
+    const stamp = new Date().toISOString().slice(0, 10)
+    reply
+      .header('Content-Type', 'application/xml; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="efaktur-${stamp}.xml"`)
+      .send(xml)
   })
 }

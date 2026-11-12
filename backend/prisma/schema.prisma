@@ -148,6 +148,7 @@ model Invoice {
   customerProvince String?    @db.VarChar(100)
   customerCountry  String?    @db.VarChar(100)
   customerPhone String?       @db.VarChar(20)
+  customerTaxId String?       @db.VarChar(50)
   status        String        @default("draft") @db.VarChar(30)
   issueDate     DateTime      @default(now())
   dueDate       DateTime

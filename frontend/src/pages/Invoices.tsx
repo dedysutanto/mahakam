@@ -79,6 +79,7 @@ export default function Invoices() {
   const [search, setSearch] = useState('')
   const [recapBusy, setRecapBusy] = useState(false)
   const [recapMode, setRecapMode] = useState<'choice' | 'manual' | null>(null)
+  const [coretaxBusy, setCoretaxBusy] = useState(false)
   const [recapWizard, setRecapWizard] = useState<'client' | 'invoices' | null>(null)
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
   const [wizardMonth, setWizardMonth] = useState('all')
@@ -306,6 +307,39 @@ export default function Invoices() {
       alert(err.message)
     } finally {
       setRecapBusy(false)
+    }
+  }
+
+  const handleCoretaxExport = async () => {
+    const ids = filtered.filter((inv) => inv.status !== 'draft').map((inv) => inv.id)
+    if (ids.length === 0) {
+      await dialog.alert('Tidak ada faktur non-draft pada filter ini')
+      return
+    }
+    setCoretaxBusy(true)
+    try {
+      const res = await fetch('/api/invoices/coretax-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.message || 'Gagal membuat file e-Faktur')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `efaktur-${new Date().toISOString().slice(0, 10)}.xml`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      await dialog.alert(err.message)
+    } finally {
+      setCoretaxBusy(false)
     }
   }
 
@@ -671,6 +705,14 @@ export default function Invoices() {
               className="btn btn-primary"
             >
               <Tag className="w-4 h-4 mr-1" /> Buat Rekap
+            </button>
+            <button
+              onClick={handleCoretaxExport}
+              disabled={coretaxBusy}
+              className="btn btn-secondary"
+              title="Ekspor faktur non-draft pada filter ini sebagai XML e-Faktur Coretax"
+            >
+              <Download className="w-4 h-4 mr-1" /> {coretaxBusy ? 'Menyiapkan...' : 'Ekspor e-Faktur'}
             </button>
           </div>
         </div>
